@@ -98,6 +98,7 @@ public final class Domain {
     public var deltatime:Double;
 
     /** Elapsed time for computation TODO remove this from Domain */
+    public var startTimeMillis:Long = 0;
     public var elapsedTimeMillis:Long = 0;
     public var allreduceTime:Long = 0;
 
@@ -239,15 +240,20 @@ public final class Domain {
     public def symmYempty():Boolean = (symmY == null);
     public def symmZempty():Boolean = (symmZ == null);
 
-    public def this(nx:Long, nr:Int, balance:Int, cost:Int, placesPerSide:Int) {
+    public val placeIndex:Long;
+    public val places:PlaceGroup;
+    
+    public def this(nx:Long, nr:Int, balance:Int, cost:Int, placesPerSide:Int, places:PlaceGroup) {
         this.nx = nx;
         this.numReg = nr;
         this.cost = cost;
         val edgeElems = nx;
         val edgeNodes = edgeElems+1;
-        val loc = DomainLoc.make(here.id, placesPerSide);
+        this.placeIndex = places.indexOf(here);
+        val loc = DomainLoc.make(placeIndex, placesPerSide, places.size());
         this.loc = loc;
-
+        this.places = places;
+        
         // Initialize Sedov Mesh
 
         // construct a uniform box for this processor
@@ -630,7 +636,7 @@ public final class Domain {
         val regElemSize = new Rail[Long](nr);
         regElemList = new Rail[Rail[Long]](nr);
 
-        srand(here.id as Int);
+        srand(placeIndex as Int);
 
         var nextIndex:Long = 0;
         if (numReg == 1n) {
@@ -661,16 +667,16 @@ public final class Domain {
                 while(regionVar >= regBinEnd(i))
                     i++;
                 // Rotate the regions based on place ID.  Rotation is 
-                // here.id % NumRegions . This makes each domain have a
+                // placeIndex % NumRegions . This makes each domain have a
                 // different region with the highest representation
-                var regionNum:Int = ((i + here.id) as Int % numReg) + 1n;
+                var regionNum:Int = ((i + placeIndex) as Int % numReg) + 1n;
                 // make sure we don't pick the same region twice in a row
                 while(regionNum == lastReg) {
                     regionVar = rand() % costDenominator;
                     i = 0;
                     while(regionVar >= regBinEnd(i))
                         i++;
-                    regionNum = ((i + here.id) as Int % numReg) + 1n;
+                    regionNum = ((i + placeIndex) as Int % numReg) + 1n;
                 }
 
                 // Pick the bin size of the region and determine the number of elements.

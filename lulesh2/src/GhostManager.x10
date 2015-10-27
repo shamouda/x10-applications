@@ -118,7 +118,8 @@ public final class GhostManager {
                            neighborListSend:Rail[Long],
                            neighborListRecv:Rail[Long],
                            sideLength:Long,
-                           accessFields:(Domain) => Rail[Rail[Double]]) {
+                           accessFields:(Domain) => Rail[Rail[Double]],
+                           numPlaces:Long) {
             this.domainPlh = domainPlh;
             this.neighborListSend = neighborListSend;
             this.neighborListRecv = neighborListRecv;
@@ -132,7 +133,7 @@ public final class GhostManager {
             val hereLoc = domainPlh().loc;
             val rr = this.recvRegions = new Rail[Region(3){rect}](neighborListRecv.size, (i:Long)=> {
                 val neighborId = neighborListRecv(i);
-                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp);
+                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp, numPlaces);
                 DomainLoc.getBoundaryRegion(hereLoc, neighborLoc, sideLength-1)
             });
             this.recvBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
@@ -140,7 +141,7 @@ public final class GhostManager {
 
             val sr = this.sendRegions = new Rail[Region(3){rect}](neighborListSend.size, (i:Long)=> {
                 val neighborId = neighborListSend(i);
-                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp);
+                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp, numPlaces);
                 DomainLoc.getBoundaryRegion(hereLoc, neighborLoc, sideLength-1)
             });
             this.sendBuffers = new Rail[Rail[Double]{self!=null}](neighborListSend.size, 
@@ -153,6 +154,8 @@ public final class GhostManager {
     }
 
     public val localState:PlaceLocalHandle[LocalState];
+    private var team:Team;
+    private var places:PlaceGroup;
 
     /**
      * Create a GhostManager to coordinate data exchange.
@@ -166,21 +169,27 @@ public final class GhostManager {
                     initNeighborsSend:() => Rail[Long],
                     initNeighborsRecv:() => Rail[Long],
                     sideLength:Long,
-                    accessFields:(Domain) => Rail[Rail[Double]]) {
+                    accessFields:(Domain) => Rail[Rail[Double]],
+                    places:PlaceGroup,
+                    team:Team) {
+        this.places = places;
+        this.team = team;
+        val numPlaces = places.size();
         // First, create the LocalState of the GhostManager at each Place.
-        val ls = PlaceLocalHandle.make[LocalState](Place.places(), () => { 
-            new LocalState(domainPlh, initNeighborsSend(), initNeighborsRecv(), sideLength, accessFields)
+        val ls = PlaceLocalHandle.make[LocalState](places, () => { 
+            new LocalState(domainPlh, initNeighborsSend(), initNeighborsRecv(), sideLength, accessFields, numPlaces)
         });
         this.localState = ls;
 
+        val tmpPlaces = places;
         // Now initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
-        Place.places().broadcastFlat(()=> {
+        places.broadcastFlat(()=> {
             val ls2 = ls();
             // The finish is required to prevent interactions between the specialized
             // finish implementation used by broadcastFlat and the implementation of resilient at.
             finish for (i in ls2.neighborListSend.range) {
-              val senderId = here.id;
-              ls2.remoteRecvBuffers(i) = at (Place(ls2.neighborListSend(i))) {
+              val senderId = tmpPlaces.indexOf(here.id);
+              ls2.remoteRecvBuffers(i) = at (tmpPlaces(ls2.neighborListSend(i))) {
                   val ls3 = ls();
                   val bufIdx = ls3.getRecvNeighborNumber(senderId);
                   GlobalRail[Double](ls3.recvBuffers(bufIdx))
@@ -189,13 +198,13 @@ public final class GhostManager {
         });
 
         // Now initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
-        Place.places().broadcastFlat(()=> {
+        places.broadcastFlat(()=> {
             val ls2 = ls();
             // The finish is required to prevent interactions between the specialized
             // finish implementation used by broadcastFlat and the implementation of resilient at.
             finish for (i in ls2.neighborListRecv.range) {
-              val recvId = here.id;
-              ls2.remoteSendBuffers(i) = at (Place(ls2.neighborListRecv(i))) {
+              val recvId = tmpPlaces.indexOf(here.id);
+              ls2.remoteSendBuffers(i) = at (tmpPlaces(ls2.neighborListRecv(i))) {
                   val ls3 = ls();
                   val bufIdx = ls3.getSendNeighborNumber(recvId);
                   GlobalRail[Double](ls3.sendBuffers(bufIdx))
@@ -264,7 +273,6 @@ public final class GhostManager {
         val src_ls = localState();
         atomic src_ls.currentPhase++;
         val sourceDom = src_ls.domainPlh();
-        val sourceId = here.id;
         for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
             sourceDom.gatherData(data, src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength);
@@ -324,7 +332,7 @@ public final class GhostManager {
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        Team.WORLD.barrier();
+        team.barrier();
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
@@ -358,8 +366,8 @@ public final class GhostManager {
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
-        val sourceId = here.id;
         val sourceDom = src_ls.domainPlh();
+        val sourceId = places.indexOf(here.id);
         val phase = src_ls.currentPhase;
         for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
@@ -402,7 +410,7 @@ public final class GhostManager {
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        Team.WORLD.barrier();
+        team.barrier();
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
@@ -436,8 +444,8 @@ public final class GhostManager {
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
-        val sourceId = here.id;
         val sourceDom = src_ls.domainPlh();
+        val sourceId = places.indexOf(here.id);
         val phase = src_ls.currentPhase;
         for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
@@ -488,7 +496,7 @@ public final class GhostManager {
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        Team.WORLD.barrier();
+        team.barrier();
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 

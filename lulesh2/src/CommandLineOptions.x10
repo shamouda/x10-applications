@@ -22,6 +22,10 @@ public class CommandLineOptions {
     var numFiles:Int = ((Place.numPlaces()+10)/9) as Int; // -f
     var showProg:Boolean = false; // -p
     var viz:Boolean = false;      // -v
+    var spare:Long = 0;           // -e
+    var ignorePlace:Long = -1;    // -y  for testing only
+    var checkpointFreq:Long = -1; // -k
+    
 
     /** Parse command line options for LULESH. */
     public static def parse(args:Rail[String]):CommandLineOptions {
@@ -42,6 +46,12 @@ public class CommandLineOptions {
                 opts.balance = parseIntValue(args, i++, "balance");
             } else if (args(i).equals("-c")) {
                 opts.cost = parseIntValue(args, i++, "cost");
+            } else if (args(i).equals("-y")) {
+                opts.ignorePlace = parseIntValue(args, i++, "ignore place");
+            } else if (args(i).equals("-e")) {
+                opts.spare = parseIntValue(args, i++, "spare places");
+            } else if (args(i).equals("-k")) {
+                opts.checkpointFreq = parseIntValue(args, i++, "checkpoint frequency");
             } else if (args(i).equals("-v")) {
                 opts.viz = true;
             } else if (args(i).equals("-p")) {
