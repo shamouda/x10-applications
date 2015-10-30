@@ -52,6 +52,7 @@ import x10.util.resilient.iterative.PlaceGroupBuilder;
 public final class Lulesh implements LocalViewResilientIterativeApp {
     static PRINT_COMM_TIME = System.getenv("LULESH_PRINT_COMM_TIME") != null;
     static SYNCH_GHOST_EXCHANGE = System.getenv("LULESH_SYNCH_GHOSTS") != null;
+    static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
 
     /** The simulation domain at each place. */
     protected val distDomain:DistDomain;
@@ -163,6 +164,39 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
                 team);
     }
 
+    public def remakeGhostManagers(){
+        val domainPlh = distDomain.domainPlh;
+        // initialize ghost update managers
+        this.massGhostMgr.remake(domainPlh,
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                opts.nx+1,
+                (dom:Domain) => [dom.nodalMass],
+                places,
+                team);
+        this.posVelGhostMgr.remake(domainPlh,
+                () => domainPlh().loc.createNeighborList(false, false, true),
+                () => domainPlh().loc.createNeighborList(false, true, false),
+                opts.nx+1,
+                (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
+                places,
+                team);
+        this.forceGhostMgr.remake(domainPlh,
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                () => domainPlh().loc.createNeighborList(false, true, true),
+                opts.nx+1,
+                (dom:Domain) => [dom.fx, dom.fy, dom.fz],
+                places,
+                team);
+        this.gradientGhostMgr.remake(domainPlh, 
+                () => domainPlh().loc.createNeighborList(true, true, true),
+                () => domainPlh().loc.createNeighborList(true, true, true),
+                opts.nx, 
+                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
+                places,
+                team);
+    }
+    
     public def run(opts:CommandLineOptions) {
          
          initGhostManagers();
@@ -239,7 +273,6 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
     
     public def step_local():void {
         val domain = distDomain.domainPlh();
-        Console.OUT.println(here + "   step ~~~~ " + domain.cycle);
         if (domain.cycle == 0n){
             if (PRINT_COMM_TIME) {
                 printLoadImbalance(domain);
@@ -259,6 +292,7 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
             //for (var i:Long = 0; i < domain.numReg; i++)
             //    Console.OUT.println("region " + (i + 1) + " size " + domain.regElemList(i).size);
         }
+        
         
         timeIncrement(domain);
 
@@ -280,15 +314,22 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
     }
 
     public def restore(newPlaces:PlaceGroup, store:ResilientStoreForApp, lastCheckpointIter:Long):void {
-        Console.OUT.println("Start restore ...");
+        if (VERBOSE) Console.OUT.println("Start restore ...");
+        var remakeDomainTime:Long = 0;
+        remakeDomainTime -= Timer.milliTime();
         distDomain.remake(newPlaces, opts);
-        store.restore();
+        remakeDomainTime += Timer.milliTime();
+        
+        store.restore_local();
         
         this.places = newPlaces;
         this.team = new Team(places);
         
-        initGhostManagers();
-        Console.OUT.println("Restore succeeded, starting at iteration ["+lastCheckpointIter+"] ...");
+        var initTime:Long = 0;
+        initTime -= Timer.milliTime();
+        remakeGhostManagers();
+        initTime += Timer.milliTime();
+        Console.OUT.println("Restore succeeded, starting at iteration ["+lastCheckpointIter+"]  remakeDomainTime["+remakeDomainTime+"] initGhostTime ["+initTime+"] ...");
     }
 
     /**
@@ -339,7 +380,9 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
             }
 
             val start = Timer.milliTime();
+            if (VERBOSE) Console.OUT.println(here + "- pre allreduce ...");
             newDt = team.allreduce(gNewDt, Team.MIN);
+            if (VERBOSE) Console.OUT.println(here + "- pro allreduce ...");
             domain.allreduceTime += Timer.milliTime() - start;
 
             ratio = newDt / oldDt;
@@ -357,7 +400,9 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
             domain.deltatime = newDt;
         } else {
             // TODO: without this barrier, fixed timestep can deadlock - why?
+            if (VERBOSE) Console.OUT.println(here + "- pre barrier ...");
             team.barrier();
+            if (VERBOSE) Console.OUT.println(here + "- pre barrier ...");
         }
 
         /* TRY TO PREVENT VERY SMALL SCALING ON THE NEXT CYCLE */
@@ -376,15 +421,22 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
     }
 
     protected def lagrangeLeapFrog(domain:Domain) {
+        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ");
         lagrangeNodal(domain);
-
+        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ");
+        
+        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeElements ");
         lagrangeElements(domain);
+        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeElements ");
+        
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
 
         posVelGhostMgr.updateBoundaryData();
 }
 
+        if (VERBOSE) Console.OUT.println(here + "- pre calcTimeConstraintsForElems ");
         calcTimeConstraintsForElems(domain);
+        if (VERBOSE) Console.OUT.println(here + "- pro calcTimeConstraintsForElems ");
 
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
         posVelGhostMgr.waitForGhosts();
@@ -398,22 +450,35 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
     protected def lagrangeNodal(domain:Domain) {
         val delt = domain.deltatime;
         var u_cut:Double = domain.u_cut;
-
+        
         // time of boundary condition evaluation is beginning of step for force 
         // and acceleration boundary conditions. 
+        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1");
         calcForceForNodes(domain);
-
+        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 1");
+        
+        
+        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 2");
         calcAccelerationForNodes(domain);
-
+        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 2");
+        
+        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 3");
         applyAccelerationBoundaryConditionsForNodes(domain);
-
+        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 3");
+        
+        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 4");
         calcVelocityForNodes(domain, delt, u_cut);
-
+        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 4");
+        
+        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 5");
         calcPositionForNodes(domain, delt);
-
+        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 5");
+        
 @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {                                          
         if (SYNCH_GHOST_EXCHANGE) {
+            if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 6");
             posVelGhostMgr.exchangeBoundaryData();
+            if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 6");
         } else {
             posVelGhostMgr.updateBoundaryData();
             posVelGhostMgr.waitForGhosts();
@@ -426,16 +491,17 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
      * material states.
      */
     protected def lagrangeElements(domain:Domain) {
+        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 1");
         val vnew = Unsafe.allocRailUninitialized[Double](domain.numElem); // new relative vol -- temp
-
+        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 2");
         calcLagrangeElements(domain, vnew);
-
+        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 3");
         calcQForElems(domain, vnew);
-
+        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 4");
         applyMaterialPropertiesForElems(domain, vnew);
-
+        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 5");
         updateVolumesForElems(domain, vnew);
-
+        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 6");
         Unsafe.dealloc(vnew);
     }
 
@@ -470,7 +536,10 @@ endLoop(0);
         calcVolumeForceForElems(domain);
 
         if (SYNCH_GHOST_EXCHANGE) {
+            if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A");
             forceGhostMgr.exchangeAndCombineBoundaryData();
+            if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 1    ====>   A");
+            
         } else {
             forceGhostMgr.gatherBoundariesToCombine();
             forceGhostMgr.waitAndCombineBoundaries();
@@ -2096,6 +2165,7 @@ endLoop(37);
         elemZ(6) = domain.z(nd6i);
         elemZ(7) = domain.z(nd7i);
     }
+
 }
 // TODO Precision specification
 

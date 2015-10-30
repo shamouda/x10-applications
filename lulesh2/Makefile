@@ -9,7 +9,7 @@ ifdef NO_CHECKS
     X10FLAG += -NO_CHECKS
 endif
 
-X10RTIMPL ?=  # sockets, mpi, pami, etc.
+X10RTIMPL ?= # sockets, mpi, pami, etc.
 ifdef X10RTIMPL
   X10FLAG += -x10rt ${X10RTIMPL}
 endif
@@ -32,7 +32,7 @@ NativeX10BIN = ${BINDIR}/lulesh2.0
 SRCPATH = src
 DOCPATH = x10doc
 
-APPFLAG =  -s 20
+APPFLAG =  -i 6 -e 3 -k 5
 
 default:	run-cpp
 
