@@ -409,22 +409,18 @@ public final class Domain {
     }
 
     public def gatherData(buffer:Rail[Double], boundaryRegion:Region(3){rect},
-                          accessFields:(dom:Domain) => Rail[Rail[Double]], sideLength:Long):void {
-        if (VERBOSE) Console.OUT.println(here + " - ## gatherData ## started    Z["+boundaryRegion.min(2)+"-"+boundaryRegion.max(2)+"] Y["+boundaryRegion.min(1)+"-"+boundaryRegion.max(1)+"] X["+boundaryRegion.min(0)+"-"+boundaryRegion.max(0)+"]  >>>>>>>");
+                          accessFields:(dom:Domain) => Rail[Rail[Double]], sideLength:Long):void {        
         val fields = accessFields(this);        
         var idx:Long = 0;
         for (field in fields) {            
             for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {                
                 for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {                
-                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
-                        if (VERBOSE) Console.OUT.println(here + " - ## gatherData ## 3-abc       z["+z+"]  y["+y+"] x["+x+"] ");
-                        buffer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);
-                        if (VERBOSE) Console.OUT.println(here + " - ## gatherData ## 3-abc       z["+z+"]  y["+y+"] x["+x+"] completed");
+                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {                        
+                        buffer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);                        
                     }
                 }
             }
         }
-        if (VERBOSE) Console.OUT.println(here + " - ## gatherData ## ended >>>>>>>>>>>>>>>>>>>>");
     }
 
     public def updateBoundaryData(data:Rail[Double], boundaryRegion:Region(3){rect},

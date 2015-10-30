@@ -400,9 +400,7 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
             domain.deltatime = newDt;
         } else {
             // TODO: without this barrier, fixed timestep can deadlock - why?
-            if (VERBOSE) Console.OUT.println(here + "- pre barrier ...");
             team.barrier();
-            if (VERBOSE) Console.OUT.println(here + "- pre barrier ...");
         }
 
         /* TRY TO PREVENT VERY SMALL SCALING ON THE NEXT CYCLE */
@@ -421,22 +419,15 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
     }
 
     protected def lagrangeLeapFrog(domain:Domain) {
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ");
         lagrangeNodal(domain);
-        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ");
-        
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeElements ");
+
         lagrangeElements(domain);
-        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeElements ");
-        
+                
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
 
         posVelGhostMgr.updateBoundaryData();
 }
-
-        if (VERBOSE) Console.OUT.println(here + "- pre calcTimeConstraintsForElems ");
         calcTimeConstraintsForElems(domain);
-        if (VERBOSE) Console.OUT.println(here + "- pro calcTimeConstraintsForElems ");
 
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
         posVelGhostMgr.waitForGhosts();
@@ -453,32 +444,19 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         
         // time of boundary condition evaluation is beginning of step for force 
         // and acceleration boundary conditions. 
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1");
         calcForceForNodes(domain);
-        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 1");
         
-        
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 2");
         calcAccelerationForNodes(domain);
-        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 2");
         
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 3");
         applyAccelerationBoundaryConditionsForNodes(domain);
-        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 3");
         
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 4");
         calcVelocityForNodes(domain, delt, u_cut);
-        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 4");
         
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 5");
         calcPositionForNodes(domain, delt);
-        if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 5");
         
 @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {                                          
         if (SYNCH_GHOST_EXCHANGE) {
-            if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 6");
             posVelGhostMgr.exchangeBoundaryData();
-            if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 6");
         } else {
             posVelGhostMgr.updateBoundaryData();
             posVelGhostMgr.waitForGhosts();
@@ -491,17 +469,16 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
      * material states.
      */
     protected def lagrangeElements(domain:Domain) {
-        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 1");
         val vnew = Unsafe.allocRailUninitialized[Double](domain.numElem); // new relative vol -- temp
-        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 2");
+
         calcLagrangeElements(domain, vnew);
-        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 3");
+
         calcQForElems(domain, vnew);
-        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 4");
+
         applyMaterialPropertiesForElems(domain, vnew);
-        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 5");
+
         updateVolumesForElems(domain, vnew);
-        if (VERBOSE) Console.OUT.println(here + "- inside lagrangeElements ~~~~~~~ 6");
+
         Unsafe.dealloc(vnew);
     }
 
@@ -536,10 +513,7 @@ endLoop(0);
         calcVolumeForceForElems(domain);
 
         if (SYNCH_GHOST_EXCHANGE) {
-            if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A");
-            forceGhostMgr.exchangeAndCombineBoundaryData();
-            if (VERBOSE) Console.OUT.println(here + "- pro lagrangeNodal ======> 1    ====>   A");
-            
+            forceGhostMgr.exchangeAndCombineBoundaryData();            
         } else {
             forceGhostMgr.gatherBoundariesToCombine();
             forceGhostMgr.waitAndCombineBoundaries();
@@ -2081,7 +2055,7 @@ endLoop(37);
         var elemId:Long = 0;
         Console.OUT.printf("Run completed:  \n");
         Console.OUT.printf("   Problem size        =  %d \n",    nx);
-        Console.OUT.printf("   Number of places    =  %d \n",    Place.numPlaces());
+        Console.OUT.printf("   Number of places    =  %d \n",    places.size());
         Console.OUT.printf("   Iteration count     =  %d \n",    domain.cycle);
         Console.OUT.printf("   Final Origin Energy = %12.6e \n", domain.e(elemId));
 

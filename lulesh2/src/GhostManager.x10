@@ -254,8 +254,7 @@ public final class GhostManager {
             finish for (i in ls2.neighborListSend.range) {
                 val senderId = tmpPlaces.indexOf(here.id);                
                 val oldNeighborPlace = oldPlaces(ls2.neighborListSend(i));
-                if (hereIsNewPlace || deletedPlaces.contains(oldNeighborPlace)){
-                    if (VERBOSE) Console.OUT.println(here + " - reexchanging global rails with new place["+(tmpPlaces(ls2.neighborListSend(i)))+"] because old place ["+oldNeighborPlace+"] died");                    
+                if (hereIsNewPlace || deletedPlaces.contains(oldNeighborPlace)){                                        
                     ls2.remoteRecvBuffers(i) = at (tmpPlaces(ls2.neighborListSend(i))) {
                         val ls3 = ls();
                         val bufIdx = ls3.getRecvNeighborNumber(senderId);
@@ -274,8 +273,7 @@ public final class GhostManager {
             finish for (i in ls2.neighborListRecv.range) {
                 val recvId = tmpPlaces.indexOf(here.id);
                 val oldNeighborPlace = oldPlaces(ls2.neighborListRecv(i));
-                if (hereIsNewPlace || deletedPlaces.contains(oldNeighborPlace)){
-                    if (VERBOSE) Console.OUT.println(here + " - reexchanging global rails with new place["+(tmpPlaces(ls2.neighborListRecv(i)))+"] because old place ["+oldNeighborPlace+"] died");
+                if (hereIsNewPlace || deletedPlaces.contains(oldNeighborPlace)){                    
                     ls2.remoteSendBuffers(i) = at (tmpPlaces(ls2.neighborListRecv(i))) {
                         val ls3 = ls();
                         val bufIdx = ls3.getSendNeighborNumber(recvId);
@@ -393,33 +391,27 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeAndCombineBoundaryData() {
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A -- exchangeAndCombineBoundaryData  X1");
         val t1 = Timer.nanoTime();        
         val ls = localState();
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A -- exchangeAndCombineBoundaryData  X2");
         val dom = ls.domainPlh();
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A -- exchangeAndCombineBoundaryData  X3");
         // (a) pack my outgoing data into the send buffers
         for (i in ls.neighborListSend.range) {
-            if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A -- exchangeAndCombineBoundaryData  X4 ("+i+")");
             val data = ls.sendBuffers(i);
             dom.gatherData(data, ls.sendRegions(i), ls.accessFields, ls.sideLength);
         }
 
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A -- exchangeAndCombineBoundaryData  X5 ");
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A -- exchangeAndCombineBoundaryData  X6 ");
+        if (VERBOSE) Console.OUT.println(here + "- pre barrier");
         team.barrier();
-        if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A -- exchangeAndCombineBoundaryData  X7 ");
+        if (VERBOSE) Console.OUT.println(here + "- pro barrier");
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
         // (c) get the packed data from my neighbors
         finish {
             for (i in ls.neighborListRecv.range) {
-                if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A -- exchangeAndCombineBoundaryData  X8 ("+i+")");
                 Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
             }
         }
@@ -428,12 +420,10 @@ public final class GhostManager {
 
         // (d) combine
         for (i in ls.recvBuffers.range) {
-            if (VERBOSE) Console.OUT.println(here + "- pre lagrangeNodal ======> 1    ====>   A -- exchangeAndCombineBoundaryData  X9 ("+i+")");
             dom.accumulateBoundaryData(ls.recvBuffers(i), ls.recvRegions(i), ls.accessFields, ls.sideLength);
         }
        ls.processTime += (Timer.nanoTime() - t4);
     }
-
 
    /**
      * Update boundary data at all neighboring places, overwriting with data
@@ -482,24 +472,21 @@ public final class GhostManager {
     public final def exchangeBoundaryData() {
         val t1 = Timer.nanoTime();
         val ls = localState();
-        if (VERBOSE) Console.OUT.println(here + "- pre exchangeBoundaryData ======> Q1");
         val dom = ls.domainPlh();
-        if (VERBOSE) Console.OUT.println(here + "- pro exchangeBoundaryData ======> Q1");
+
         
         // (a) pack my outgoing data into the send buffers
         for (i in ls.neighborListSend.range) {
-            if (VERBOSE) Console.OUT.println(here + "- pre exchangeBoundaryData ======> Q2  ("+i+") ");
             dom.gatherData(ls.sendBuffers(i), ls.sendRegions(i), ls.accessFields, ls.sideLength);
-            if (VERBOSE) Console.OUT.println(here + "- pro exchangeBoundaryData ======> Q2  ("+i+") ");
         }
 
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
         
-        if (VERBOSE) Console.OUT.println(here + "- pre exchangeBoundaryData ======> Q3 ");
+        if (VERBOSE) Console.OUT.println(here + "- pre barrier");
         team.barrier();
-        if (VERBOSE) Console.OUT.println(here + "- pro exchangeBoundaryData ======> Q3 ");
+        if (VERBOSE) Console.OUT.println(here + "- pro barrier");
         
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
@@ -509,9 +496,7 @@ public final class GhostManager {
         // (c) get the packed data from my neighbors
         finish {
             for (i in ls.neighborListRecv.range) {
-                if (VERBOSE) Console.OUT.println(here + "- pre exchangeBoundaryData ======> Q4 ("+i+") ");
                 Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
-                if (VERBOSE) Console.OUT.println(here + "- pro exchangeBoundaryData ======> Q4 ("+i+") ");
             }
         }
         val t4 = Timer.nanoTime();
@@ -519,9 +504,7 @@ public final class GhostManager {
 
         // (d) combine
         for (i in ls.recvBuffers.range) {
-            if (VERBOSE) Console.OUT.println(here + "- pre exchangeBoundaryData ======> Q5 ("+i+") ");
             dom.updateBoundaryData(ls.recvBuffers(i), ls.recvRegions(i), ls.accessFields, ls.sideLength);
-            if (VERBOSE) Console.OUT.println(here + "- pro exchangeBoundaryData ======> Q5 ("+i+") ");
         }
         ls.processTime += (Timer.nanoTime() - t4);
     }
@@ -580,30 +563,27 @@ public final class GhostManager {
      * sendBuffers).
      */
     public final def exchangePlaneGhosts() {
-        if (VERBOSE) Console.OUT.println(here + "- inside exchangePlaneGhosts ~~~~~~~!!!!!!!!! R1 ");
         val t1 = Timer.nanoTime();
         val ls = localState();
         val dom = ls.domainPlh();
 
         // (a) pack my outgoing data into the send buffers
         for (i in ls.neighborListSend.range) {
-            if (VERBOSE) Console.OUT.println(here + "- inside exchangePlaneGhosts ~~~~~~~!!!!!!!!! R2 ("+i+") ");
-            if (VERBOSE) Console.OUT.println(here + "- inside exchangePlaneGhosts ~~~~~~~!!!!!!!!! R2 ("+i+") isNull1("+(ls.sendBuffers(i)== null)+")   isNull2("+(ls.sendRegions(i) == null)+") ");
             dom.gatherData(ls.sendBuffers(i), ls.sendRegions(i), ls.accessFields, ls.sideLength);
         }
 
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        if (VERBOSE) Console.OUT.println(here + "- inside exchangePlaneGhosts ~~~~~~~!!!!!!!!! R3 ");
+        if (VERBOSE) Console.OUT.println(here + "- pre barrier");
         team.barrier();
+        if (VERBOSE) Console.OUT.println(here + "- pro barrier");
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
         // (c) get the packed data from my neighbors
         finish {
             for (i in ls.neighborListRecv.range) {
-                if (VERBOSE) Console.OUT.println(here + "- inside exchangePlaneGhosts ~~~~~~~!!!!!!!!! R4 ");
                 Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
             }
         }
@@ -615,7 +595,6 @@ public final class GhostManager {
         val localDataSize = sideLength*sideLength*sideLength;
         val ghostRegionSize = sideLength*sideLength;
         for (i in ls.recvBuffers.range) {
-            if (VERBOSE) Console.OUT.println(here + "- inside exchangePlaneGhosts ~~~~~~~!!!!!!!!! R5 ("+i+") ");
             val ghostOffset = localDataSize + i * ghostRegionSize;
             dom.updateGhosts(ls.recvBuffers(i), ls.accessFields, ghostRegionSize, ghostOffset);
         }

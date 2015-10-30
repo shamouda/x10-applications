@@ -14,6 +14,7 @@ import x10.util.resilient.iterative.DistObjectSnapshot;
 import x10.regionarray.Dist;
 
 class DistDomain implements Snapshottable {
+    static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
     public var domainPlh:PlaceLocalHandle[Domain];
     public var places:PlaceGroup;
     
@@ -57,21 +58,20 @@ class DistDomain implements Snapshottable {
     }
     
     public def makeSnapshot_local(snapshot:DistObjectSnapshot) {
-        Console.OUT.println(here + " start make snapshot local >>>>>>>");
+        if (VERBOSE) Console.OUT.println(here + " start make snapshot local >>>>>>>");
         val i = places.indexOf(here);
         val localDomain = domainPlh();
         val domainSnapInfo = new DomainSnapshot(localDomain);
         snapshot.save(i, domainSnapInfo);
-        Console.OUT.println(here + " end make snapshot local >>>>>>>");
+        if (VERBOSE)  Console.OUT.println(here + " end make snapshot local >>>>>>>");
     }
     
     public def restoreSnapshot_local(snapshot:DistObjectSnapshot) {
-        Console.OUT.println(here + " start restore local #####");
+        if (VERBOSE) Console.OUT.println(here + " start restore local #####");
         val i = places.indexOf(here);
         val storedDomain = snapshot.load(i) as DomainSnapshot;
-        Console.OUT.println(here + " start populate domain #####");
         storedDomain.populateDomain(domainPlh());
-        Console.OUT.println(here + " end restore local #####");
+        if (VERBOSE) Console.OUT.println(here + " end restore local #####");
     }
 }
 // vim:tabstop=4:shiftwidth=4:expandtab
