@@ -355,7 +355,7 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         val maxLoad = team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
         val totalLoad = team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
         if (here.equals(Place.FIRST_PLACE)) {
-            val meanLoad = totalLoad/Place.numPlaces();
+            val meanLoad = totalLoad/places.size();
             Console.OUT.printf("region load max %d average %d imbalance %f\n", maxLoad, meanLoad, (maxLoad*1.0/meanLoad)-1.0);
         }
     }
@@ -2050,7 +2050,7 @@ endLoop(37);
         // processor speed independent of multi-place parallelism.
         // GrindTime2 takes into account speedups from multi-place parallelism 
         val grindTime1 = ((elapsedTime*1e6)/domain.cycle)/(nx*nx*nx);
-        val grindTime2 = ((elapsedTime*1e6)/domain.cycle)/(nx*nx*nx*Place.numPlaces());
+        val grindTime2 = ((elapsedTime*1e6)/domain.cycle)/(nx*nx*nx*places.size());
 
         var elemId:Long = 0;
         Console.OUT.printf("Run completed:  \n");
