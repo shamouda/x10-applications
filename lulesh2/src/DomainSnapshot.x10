@@ -18,7 +18,7 @@ class DomainSnapshot implements Snapshot {
     public def this(domain:Domain) {
         val numNode = domain.x.size as Long;
         val numElem = domain.e.size as Long;        
-        data = new Rail[Double](6*numNode + 6*numElem + 6);
+        data = new Rail[Double](6*numNode + 6*numElem + 7);
         
         var srcOff:Long = 0;
         data(srcOff++) = numNode;
@@ -28,6 +28,8 @@ class DomainSnapshot implements Snapshot {
         data(srcOff++) = domain.dthydro;
         data(srcOff++) = domain.cycle;
         data(srcOff++) = domain.time;
+        
+        data(srcOff++) = domain.startTimeMillis;
         
         Rail.copy(domain.x , 0, data, srcOff, numNode); srcOff += numNode;
         Rail.copy(domain.y , 0, data, srcOff, numNode); srcOff += numNode;
@@ -57,11 +59,13 @@ class DomainSnapshot implements Snapshot {
         var srcOff:Long = 0;   
         val numNode = data(srcOff++) as Long;
         val numElem = data(srcOff++) as Long;
+        
         domain.dtcourant = data(srcOff++);
         domain.dthydro = data(srcOff++);
         domain.cycle = data(srcOff++) as Int;
         domain.time = data(srcOff++);
         
+        domain.startTimeMillis = data(srcOff++) as Long;
         
         Rail.copy(data, srcOff, domain.x , 0, numNode); srcOff += numNode;
         Rail.copy(data, srcOff, domain.y , 0, numNode); srcOff += numNode;
