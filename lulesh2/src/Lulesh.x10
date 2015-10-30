@@ -327,7 +327,7 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         
         var initTime:Long = 0;
         initTime -= Timer.milliTime();
-        remakeGhostManagers();
+        initGhostManagers();
         initTime += Timer.milliTime();
         Console.OUT.println("Restore succeeded, starting at iteration ["+lastCheckpointIter+"]  remakeDomainTime["+remakeDomainTime+"] initGhostTime ["+initTime+"] ...");
     }
