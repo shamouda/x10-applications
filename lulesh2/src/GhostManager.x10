@@ -600,4 +600,8 @@ public final class GhostManager {
         }
         ls.processTime += (Timer.nanoTime() - t4);
     }
+    
+    public def destroyLocalState(){
+        PlaceLocalHandle.destroy(places, localState, (Place)=>true);
+    }
 }

@@ -134,6 +134,8 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
     public def initGhostManagers(){
         val domainPlh = distDomain.domainPlh;
         // initialize ghost update managers
+        if (this.massGhostMgr != null)
+            this.massGhostMgr.destroyLocalState();
         this.massGhostMgr = new GhostManager(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
@@ -141,6 +143,8 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
                 (dom:Domain) => [dom.nodalMass],
                 places,
                 team);
+        if (this.posVelGhostMgr != null)
+            this.posVelGhostMgr.destroyLocalState();
         this.posVelGhostMgr = new GhostManager(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, false, true),
                 () => domainPlh().loc.createNeighborList(false, true, false),
@@ -148,6 +152,8 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
                 (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
                 places,
                 team);
+        if (this.forceGhostMgr != null)
+            this.forceGhostMgr.destroyLocalState();
         this.forceGhostMgr = new GhostManager(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
@@ -155,6 +161,8 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
                 (dom:Domain) => [dom.fx, dom.fy, dom.fz],
                 places,
                 team);
+        if (this.gradientGhostMgr != null)
+            this.gradientGhostMgr.destroyLocalState();
         this.gradientGhostMgr = new GhostManager(domainPlh, 
                 () => domainPlh().loc.createNeighborList(true, true, true),
                 () => domainPlh().loc.createNeighborList(true, true, true),
@@ -163,7 +171,8 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
                 places,
                 team);
     }
-
+    
+    //broken
     public def remakeGhostManagers(){
         val domainPlh = distDomain.domainPlh;
         // initialize ghost update managers
@@ -198,17 +207,17 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
     }
     
     public def run(opts:CommandLineOptions) {
-         
-         initGhostManagers();
-
-        new LocalViewResilientExecutor(opts.checkpointFreq, places).run(this);
+        val appStartTime = Timer.milliTime();
+        
+        initGhostManagers();
+        
+        new LocalViewResilientExecutor(opts.checkpointFreq, places).run(this, appStartTime);
 
         finish for (place in places) at(place) async {
             val domain = distDomain.domainPlh();
             val elapsedTimeMillis = Timer.milliTime() - domain.startTimeMillis;
             domain.elapsedTimeMillis = team.allreduce(elapsedTimeMillis, Team.MAX);
-
-        } // at(place) async
+        }
 
         val elapsedTime = (distDomain.domainPlh().elapsedTimeMillis) / 1e3;
         verifyAndWriteFinalOutput(elapsedTime, distDomain.domainPlh());
