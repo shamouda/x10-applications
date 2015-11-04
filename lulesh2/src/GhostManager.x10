@@ -184,107 +184,45 @@ public final class GhostManager {
         this.localState = ls;
 
         val tmpPlaces = places;
-        // Now initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
         places.broadcastFlat(()=> {
             val ls2 = ls();
-            // The finish is required to prevent interactions between the specialized
-            // finish implementation used by broadcastFlat and the implementation of resilient at.
-            finish for (i in ls2.neighborListSend.range) {
-              val senderId = tmpPlaces.indexOf(here.id);
-              ls2.remoteRecvBuffers(i) = at (tmpPlaces(ls2.neighborListSend(i))) {
-                  val ls3 = ls();
-                  val bufIdx = ls3.getRecvNeighborNumber(senderId);
-                  GlobalRail[Double](ls3.recvBuffers(bufIdx))
-              };
-            }
-        });
+            val rrb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteRecvBuffers);
+            val rsb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteSendBuffers);
 
-        // Now initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
-        places.broadcastFlat(()=> {
-            val ls2 = ls();
-            // The finish is required to prevent interactions between the specialized
-            // finish implementation used by broadcastFlat and the implementation of resilient at.
-            finish for (i in ls2.neighborListRecv.range) {
-              val recvId = tmpPlaces.indexOf(here.id);
-              ls2.remoteSendBuffers(i) = at (tmpPlaces(ls2.neighborListRecv(i))) {
-                  val ls3 = ls();
-                  val bufIdx = ls3.getSendNeighborNumber(recvId);
-                  GlobalRail[Double](ls3.sendBuffers(bufIdx))
-              };
+            finish {
+                if (Lulesh.SYNCH_GHOST_EXCHANGE) {
+                    // Initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
+                    val recvId = tmpPlaces.indexOf(here.id);
+                    for (i in ls2.neighborListRecv.range) {
+                        at (tmpPlaces(ls2.neighborListRecv(i))) async {
+                            val ls3 = ls();
+                            val bufIdx = ls3.getSendNeighborNumber(recvId);
+                            val gr = GlobalRail[Double](ls3.sendBuffers(bufIdx));
+                            at (rsb_gr.home) async {
+                                rsb_gr()(i) = gr;
+                            }
+                        }
+                    }
+                } else {
+                    // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
+                    val senderId = tmpPlaces.indexOf(here.id);
+                    for (i in ls2.neighborListSend.range) {
+                        at (tmpPlaces(ls2.neighborListSend(i))) async {
+                            val ls3 = ls();
+                            val bufIdx = ls3.getRecvNeighborNumber(senderId);
+                            val gr = GlobalRail[Double](ls3.recvBuffers(bufIdx));
+                            at (rrb_gr.home) async {
+                                rrb_gr()(i) = gr;
+                            }
+                        }
+                    }
+                }
             }
+            rrb_gr.forget();
+            rsb_gr.forget();
         });
     }
 
-    //Broken
-    public def remake(domainPlh:PlaceLocalHandle[Domain],
-                    initNeighborsSend:() => Rail[Long],
-                    initNeighborsRecv:() => Rail[Long],
-                    sideLength:Long,
-                    accessFields:(Domain) => Rail[Rail[Double]],
-                    newPlaces:PlaceGroup,
-                    team:Team) {        
-        val oldPlaces = this.places;
-        assert (oldPlaces.size() == newPlaces.size());
-        
-        val addedPlaces = new x10.util.ArrayList[Place]();
-        val deletedPlaces = new x10.util.ArrayList[Place]();
-        for (i in 0..(newPlaces.size()-1)){
-            if (oldPlaces(i).id != newPlaces(i).id){
-                addedPlaces.add(newPlaces(i));
-                deletedPlaces.add(oldPlaces(i));
-            }
-        }
-        this.places = newPlaces;
-        this.team = team;
-        val numPlaces = places.size();
-        // First, create the LocalState of the GhostManager at each Place.        
-        for (p in addedPlaces){
-            PlaceLocalHandle.addPlace(this.localState, p, () => {
-                new LocalState(domainPlh, initNeighborsSend(), initNeighborsRecv(), sideLength, accessFields, numPlaces)
-            });
-        }
-        val ls = this.localState;
-        val tmpPlaces = places;
-        // Now initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
-        places.broadcastFlat(()=> {
-            val ls2 = ls();
-            // The finish is required to prevent interactions between the specialized
-            // finish implementation used by broadcastFlat and the implementation of resilient at.
-            val hereIsNewPlace = addedPlaces.contains(here);
-            finish for (i in ls2.neighborListSend.range) {
-                val senderId = tmpPlaces.indexOf(here.id);                
-                val oldNeighborPlace = oldPlaces(ls2.neighborListSend(i));
-                if (hereIsNewPlace || deletedPlaces.contains(oldNeighborPlace)){                                        
-                    ls2.remoteRecvBuffers(i) = at (tmpPlaces(ls2.neighborListSend(i))) {
-                        val ls3 = ls();
-                        val bufIdx = ls3.getRecvNeighborNumber(senderId);
-                        GlobalRail[Double](ls3.recvBuffers(bufIdx))
-                    };
-                }
-            }
-        });
-
-        // Now initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
-        places.broadcastFlat(()=> {
-            val ls2 = ls();
-            // The finish is required to prevent interactions between the specialized
-            // finish implementation used by broadcastFlat and the implementation of resilient at.
-            val hereIsNewPlace = addedPlaces.contains(here);
-            finish for (i in ls2.neighborListRecv.range) {
-                val recvId = tmpPlaces.indexOf(here.id);
-                val oldNeighborPlace = oldPlaces(ls2.neighborListRecv(i));
-                if (hereIsNewPlace || deletedPlaces.contains(oldNeighborPlace)){                    
-                    ls2.remoteSendBuffers(i) = at (tmpPlaces(ls2.neighborListRecv(i))) {
-                        val ls3 = ls();
-                        val bufIdx = ls3.getSendNeighborNumber(recvId);
-                        GlobalRail[Double](ls3.sendBuffers(bufIdx))
-                    };
-                }
-            }
-        });
-    }
-    
-    
     private final def allNeighborsReceived():Boolean {
         val received = localState().neighborsReceivedCount;
         val expected = localState().neighborListRecv.size;
@@ -391,9 +329,10 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeAndCombineBoundaryData() {
-        val t1 = Timer.nanoTime();        
+        val t1 = Timer.nanoTime();
         val ls = localState();
         val dom = ls.domainPlh();
+
         // (a) pack my outgoing data into the send buffers
         for (i in ls.neighborListSend.range) {
             val data = ls.sendBuffers(i);
@@ -424,6 +363,7 @@ public final class GhostManager {
         }
        ls.processTime += (Timer.nanoTime() - t4);
     }
+
 
    /**
      * Update boundary data at all neighboring places, overwriting with data
@@ -474,7 +414,6 @@ public final class GhostManager {
         val ls = localState();
         val dom = ls.domainPlh();
 
-        
         // (a) pack my outgoing data into the send buffers
         for (i in ls.neighborListSend.range) {
             dom.gatherData(ls.sendBuffers(i), ls.sendRegions(i), ls.accessFields, ls.sideLength);

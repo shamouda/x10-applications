@@ -409,14 +409,14 @@ public final class Domain {
     }
 
     public def gatherData(buffer:Rail[Double], boundaryRegion:Region(3){rect},
-                          accessFields:(dom:Domain) => Rail[Rail[Double]], sideLength:Long):void {        
-        val fields = accessFields(this);        
+                          accessFields:(dom:Domain) => Rail[Rail[Double]], sideLength:Long):void {
+        val fields = accessFields(this);
         var idx:Long = 0;
-        for (field in fields) {            
-            for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {                
-                for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {                
-                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {                        
-                        buffer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);                        
+        for (field in fields) {
+            for (z in boundaryRegion.min(2)..boundaryRegion.max(2)) {
+                for (y in boundaryRegion.min(1)..boundaryRegion.max(1)) {
+                    for (x in boundaryRegion.min(0)..boundaryRegion.max(0)) {
+                        buffer(idx++) = field(x + y*sideLength + z*sideLength*sideLength);
                     }
                 }
             }
