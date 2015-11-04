@@ -298,13 +298,16 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         store.restore_local();
         
         this.places = newPlaces;
+        var teamCreationTime:Long = 0;
+        teamCreationTime -= Timer.milliTime();
         this.team = new Team(places);
+        teamCreationTime += Timer.milliTime();
         
         var initTime:Long = 0;
         initTime -= Timer.milliTime();
         initGhostManagers();
         initTime += Timer.milliTime();
-        Console.OUT.println("Restore succeeded, starting at iteration ["+lastCheckpointIter+"]  remakeDomainTime["+remakeDomainTime+"] initGhostTime ["+initTime+"] ...");
+        Console.OUT.println("Restore succeeded:startingAtIteration:"+lastCheckpointIter+":remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime+":createTeamTime:"+teamCreationTime);
     }
 
     /**
