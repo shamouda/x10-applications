@@ -172,40 +172,6 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
                 team);
     }
     
-    //broken
-    public def remakeGhostManagers(){
-        val domainPlh = distDomain.domainPlh;
-        // initialize ghost update managers
-        this.massGhostMgr.remake(domainPlh,
-                () => domainPlh().loc.createNeighborList(false, true, true),
-                () => domainPlh().loc.createNeighborList(false, true, true),
-                opts.nx+1,
-                (dom:Domain) => [dom.nodalMass],
-                places,
-                team);
-        this.posVelGhostMgr.remake(domainPlh,
-                () => domainPlh().loc.createNeighborList(false, false, true),
-                () => domainPlh().loc.createNeighborList(false, true, false),
-                opts.nx+1,
-                (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
-                places,
-                team);
-        this.forceGhostMgr.remake(domainPlh,
-                () => domainPlh().loc.createNeighborList(false, true, true),
-                () => domainPlh().loc.createNeighborList(false, true, true),
-                opts.nx+1,
-                (dom:Domain) => [dom.fx, dom.fy, dom.fz],
-                places,
-                team);
-        this.gradientGhostMgr.remake(domainPlh, 
-                () => domainPlh().loc.createNeighborList(true, true, true),
-                () => domainPlh().loc.createNeighborList(true, true, true),
-                opts.nx, 
-                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
-                places,
-                team);
-    }
-    
     public def run(opts:CommandLineOptions) {
         val appStartTime = Timer.milliTime();
         
