@@ -288,14 +288,14 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         Console.OUT.println("Checkpoint saved successfully ...");
     }
 
-    public def restore(newPlaces:PlaceGroup, store:ResilientStoreForApp, lastCheckpointIter:Long):void {
+    public def restore(newPlaces:PlaceGroup, store:ResilientStoreForApp, lastCheckpointIter:Long, newAddedPlaces:x10.util.ArrayList[x10.lang.Place]):void {
         if (VERBOSE) Console.OUT.println("Start restore ...");
         var remakeDomainTime:Long = 0;
         remakeDomainTime -= Timer.milliTime();
         distDomain.remake(newPlaces, opts);
         remakeDomainTime += Timer.milliTime();
         
-        store.restore_local();
+        store.restore();
         
         this.places = newPlaces;
         var teamCreationTime:Long = 0;
