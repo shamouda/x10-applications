@@ -98,8 +98,8 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         val numPlaces = places.size();
         
         val placesPerSide = Math.cbrt((numPlaces as Double) + 0.5) as Int;
-        if  (placesPerSide*placesPerSide*placesPerSide != numPlaces as Int) {
-            Console.ERR.println("Num processors must be a cube of an integer (1, 8, 27, ...)");
+        if  (placesPerSide <= 0 || placesPerSide*placesPerSide*placesPerSide != numPlaces as Int) {
+            Console.ERR.println("Num processors must be a perfect cube (1, 8, 27, ...)");
             System.setExitCode(EXIT_CODE_INCORRECT_USAGE);
             return;
         }
