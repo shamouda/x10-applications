@@ -183,6 +183,7 @@ public final class GhostManager {
         });
         this.localState = ls;
 
+        // Next, gather the GlobalRails I need to communicate with my neighbors
         val tmpPlaces = places;
         places.broadcastFlat(()=> {
             val ls2 = ls();
