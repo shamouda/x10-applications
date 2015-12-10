@@ -30,7 +30,7 @@ class DistDomain implements Snapshottable {
         val numPlaces = newPg.size();
     
         val placesPerSide = Math.cbrt((numPlaces as Double) + 0.5) as Int;
-        if  (placesPerSide*placesPerSide*placesPerSide != numPlaces as Int) {
+        if  (placesPerSide <= 0 || placesPerSide*placesPerSide*placesPerSide != numPlaces as Int) {
             throw new Exception("Num of restore processors must be a cube of an integer (1, 8, 27, ...)");
         }
         places = newPg;

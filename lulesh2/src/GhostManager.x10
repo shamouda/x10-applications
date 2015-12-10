@@ -120,8 +120,7 @@ public final class GhostManager {
                            neighborListSend:Rail[Long],
                            neighborListRecv:Rail[Long],
                            sideLength:Long,
-                           accessFields:(Domain) => Rail[Rail[Double]],
-                           numPlaces:Long) {
+                           accessFields:(Domain) => Rail[Rail[Double]]) {
             this.domainPlh = domainPlh;
             this.neighborListSend = neighborListSend;
             this.neighborListRecv = neighborListRecv;
@@ -135,7 +134,7 @@ public final class GhostManager {
             val hereLoc = domainPlh().loc;
             val rr = this.recvRegions = new Rail[Region(3){rect}](neighborListRecv.size, (i:Long)=> {
                 val neighborId = neighborListRecv(i);
-                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp, numPlaces);
+                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp);
                 DomainLoc.getBoundaryRegion(hereLoc, neighborLoc, sideLength-1)
             });
             this.recvBuffers = new Rail[Rail[Double]{self!=null}](neighborListRecv.size, 
@@ -143,7 +142,7 @@ public final class GhostManager {
 
             val sr = this.sendRegions = new Rail[Region(3){rect}](neighborListSend.size, (i:Long)=> {
                 val neighborId = neighborListSend(i);
-                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp, numPlaces);
+                val neighborLoc = DomainLoc.make(neighborId, hereLoc.tp);
                 DomainLoc.getBoundaryRegion(hereLoc, neighborLoc, sideLength-1)
             });
             this.sendBuffers = new Rail[Rail[Double]{self!=null}](neighborListSend.size, 
@@ -179,7 +178,7 @@ public final class GhostManager {
         val numPlaces = places.size();
         // First, create the LocalState of the GhostManager at each Place.
         val ls = PlaceLocalHandle.make[LocalState](places, () => { 
-            new LocalState(domainPlh, initNeighborsSend(), initNeighborsRecv(), sideLength, accessFields, numPlaces)
+            new LocalState(domainPlh, initNeighborsSend(), initNeighborsRecv(), sideLength, accessFields)
         });
         this.localState = ls;
 
@@ -379,8 +378,8 @@ public final class GhostManager {
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
-        val sourceDom = src_ls.domainPlh();
         val sourceId = places.indexOf(here.id);
+        val sourceDom = src_ls.domainPlh();
         val phase = src_ls.currentPhase;
         for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
@@ -431,8 +430,6 @@ public final class GhostManager {
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
-        
-        
         // (c) get the packed data from my neighbors
         finish {
             for (i in ls.neighborListRecv.range) {
@@ -463,8 +460,8 @@ public final class GhostManager {
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
-        val sourceDom = src_ls.domainPlh();
         val sourceId = places.indexOf(here.id);
+        val sourceDom = src_ls.domainPlh();
         val phase = src_ls.currentPhase;
         for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);

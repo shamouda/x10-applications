@@ -33,10 +33,10 @@ public final class DomainLoc(
     public var cornerNeighbors:Long;
 
     /** Create a new DomainLoc for the given place in the grid. */
-    public static def make(placeId:Long, placesPerSide:Int, nPlaces:Long):DomainLoc {
+    public static def make(placeId:Long, placesPerSide:Int):DomainLoc {
         // TODO use PlaceGroup
         val id = placeId as Int;
-        val numPlaces = nPlaces as Int;
+        val numPlaces = placesPerSide * placesPerSide * placesPerSide;
 
         assert (placesPerSide*placesPerSide*placesPerSide == numPlaces);
 

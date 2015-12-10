@@ -18,7 +18,7 @@ import x10.compiler.StackAllocateUninitialized;
 import x10.util.Team;
 import x10.util.Timer;
 import x10.util.resilient.iterative.LocalViewResilientIterativeApp;
-import x10.util.resilient.iterative.ResilientStoreForApp;
+import x10.util.resilient.iterative.ApplicationSnapshotStore;
 import x10.util.resilient.iterative.LocalViewResilientExecutor;
 import x10.util.resilient.iterative.PlaceGroupBuilder;
 
@@ -280,7 +280,7 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         
     }
 
-    public def checkpoint(store:ResilientStoreForApp):void {
+    public def checkpoint(store:ApplicationSnapshotStore):void {
         Console.OUT.println("Starting checkpoint ...");
         store.startNewSnapshot();
         store.save(distDomain);
@@ -288,7 +288,7 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         Console.OUT.println("Checkpoint saved successfully ...");
     }
 
-    public def restore(newPlaces:PlaceGroup, store:ResilientStoreForApp, lastCheckpointIter:Long, newAddedPlaces:x10.util.ArrayList[x10.lang.Place]):void {
+    public def restore(newPlaces:PlaceGroup, store:ApplicationSnapshotStore, lastCheckpointIter:Long, newAddedPlaces:x10.util.ArrayList[x10.lang.Place]):void {
         if (VERBOSE) Console.OUT.println("Start restore ...");
         var remakeDomainTime:Long = 0;
         remakeDomainTime -= Timer.milliTime();

@@ -250,7 +250,7 @@ public final class Domain {
         val edgeElems = nx;
         val edgeNodes = edgeElems+1;
         this.placeIndex = places.indexOf(here);
-        val loc = DomainLoc.make(placeIndex, placesPerSide, places.size());
+        val loc = DomainLoc.make(placeIndex, placesPerSide);
         this.loc = loc;
         this.places = places;
         
