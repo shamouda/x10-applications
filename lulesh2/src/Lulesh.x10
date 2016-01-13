@@ -134,42 +134,53 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
     public def initGhostManagers(){
         val domainPlh = distDomain.domainPlh;
         // initialize ghost update managers
-        if (this.massGhostMgr != null)
-            this.massGhostMgr.destroyLocalState();
-        this.massGhostMgr = new GhostManager(domainPlh,
-                () => domainPlh().loc.createNeighborList(false, true, true),
-                () => domainPlh().loc.createNeighborList(false, true, true),
-                opts.nx+1,
-                (dom:Domain) => [dom.nodalMass],
-                places,
-                team);
-        if (this.posVelGhostMgr != null)
-            this.posVelGhostMgr.destroyLocalState();
-        this.posVelGhostMgr = new GhostManager(domainPlh,
-                () => domainPlh().loc.createNeighborList(false, false, true),
-                () => domainPlh().loc.createNeighborList(false, true, false),
-                opts.nx+1,
-                (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
-                places,
-                team);
-        if (this.forceGhostMgr != null)
-            this.forceGhostMgr.destroyLocalState();
-        this.forceGhostMgr = new GhostManager(domainPlh,
-                () => domainPlh().loc.createNeighborList(false, true, true),
-                () => domainPlh().loc.createNeighborList(false, true, true),
-                opts.nx+1,
-                (dom:Domain) => [dom.fx, dom.fy, dom.fz],
-                places,
-                team);
-        if (this.gradientGhostMgr != null)
-            this.gradientGhostMgr.destroyLocalState();
-        this.gradientGhostMgr = new GhostManager(domainPlh, 
-                () => domainPlh().loc.createNeighborList(true, true, true),
-                () => domainPlh().loc.createNeighborList(true, true, true),
-                opts.nx, 
-                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
-                places,
-                team);
+        finish {
+            async {
+                if (this.massGhostMgr != null)
+                    this.massGhostMgr.destroyLocalState();
+                this.massGhostMgr = new GhostManager(domainPlh,
+                        () => domainPlh().loc.createNeighborList(false, true, true),
+                        () => domainPlh().loc.createNeighborList(false, true, true),
+                        opts.nx+1,
+                        (dom:Domain) => [dom.nodalMass],
+                        places,
+                        team);
+            }
+            async {
+                if (this.posVelGhostMgr != null)
+                    this.posVelGhostMgr.destroyLocalState();
+                this.posVelGhostMgr = new GhostManager(domainPlh,
+                        () => domainPlh().loc.createNeighborList(false, false, true),
+                        () => domainPlh().loc.createNeighborList(false, true, false),
+                        opts.nx+1,
+                        (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
+                        places,
+                        team);
+            }
+            async {
+                if (this.forceGhostMgr != null)
+                    this.forceGhostMgr.destroyLocalState();
+                this.forceGhostMgr = new GhostManager(domainPlh,
+                        () => domainPlh().loc.createNeighborList(false, true, true),
+                        () => domainPlh().loc.createNeighborList(false, true, true),
+                        opts.nx+1,
+                        (dom:Domain) => [dom.fx, dom.fy, dom.fz],
+                        places,
+                        team);
+            }
+            async {
+                if (this.gradientGhostMgr != null)
+                    this.gradientGhostMgr.destroyLocalState();
+            
+                this.gradientGhostMgr = new GhostManager(domainPlh, 
+                        () => domainPlh().loc.createNeighborList(true, true, true),
+                        () => domainPlh().loc.createNeighborList(true, true, true),
+                        opts.nx, 
+                        (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
+                        places,
+                        team);
+            }
+        }
     }
     
     public def run(opts:CommandLineOptions) {

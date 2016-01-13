@@ -28,10 +28,6 @@ public final class DomainLoc(
     /** Z location of this domain in the grid. */
     z:Int) {
 
-    public var planeNeighbors:Long;
-    public var edgeNeighbors:Long;
-    public var cornerNeighbors:Long;
-
     /** Create a new DomainLoc for the given place in the grid. */
     public static def make(placeId:Long, placesPerSide:Int):DomainLoc {
         // TODO use PlaceGroup
@@ -81,6 +77,10 @@ public final class DomainLoc(
      * @param lo include domains that are closer to the origin than this domain
      */
     public def createNeighborList(planeOnly:Boolean, hi:Boolean, lo:Boolean):Rail[Long] {
+        var planeNeighbors:Long;
+        var edgeNeighbors:Long;
+        var cornerNeighbors:Long;
+    
         val p = tp * tp;
         val r = tp;
         val c = 1;
