@@ -36,7 +36,7 @@ public final class DomainLoc(
     public static def make(placeId:Long, placesPerSide:Int):DomainLoc {
         // TODO use PlaceGroup
         val id = placeId as Int;
-        val numPlaces = Place.numPlaces() as Int;
+        val numPlaces = placesPerSide * placesPerSide * placesPerSide;
 
         assert (placesPerSide*placesPerSide*placesPerSide == numPlaces);
 

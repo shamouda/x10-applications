@@ -4,12 +4,12 @@
 # SEDOV_SYNC_POS_VEL_LATE
 SYNCFLAG = -define SEDOV_SYNC_POS_VEL_EARLY
 
-X10FLAG = -v -J-Xmx1500M -O3 -VERBOSE_CHECKS -g -report postcompile=1 ${SYNCFLAG}
+X10FLAG = -v -J-Xmx8G -J-Xms8G -O3 -VERBOSE_CHECKS -O -NO_CHECKS -g -report postcompile=1 ${SYNCFLAG}
 ifdef NO_CHECKS
     X10FLAG += -NO_CHECKS
 endif
 
-X10RTIMPL ?=  # sockets, mpi, pami, etc.
+X10RTIMPL ?= # sockets, mpi, pami, etc.
 ifdef X10RTIMPL
   X10FLAG += -x10rt ${X10RTIMPL}
 endif
@@ -32,8 +32,6 @@ NativeX10BIN = ${BINDIR}/lulesh2.0
 SRCPATH = src
 DOCPATH = x10doc
 
-APPFLAG =  -s 20
-
 default:	run-cpp
 
 build:	${NativeX10BIN} ${ManagedX10BIN}
@@ -50,16 +48,19 @@ kernel:	${SRCPATH}/*.x10
 	x10c++ ${X10FLAG} -o kernel -d ${BINDIR} ${SRCPATH}/LuleshKernel.x10
 
 run-java:	${ManagedX10BIN}
-	x10 -cp ${ManagedX10BIN} Lulesh ${APPFLAG}
+	x10 -cp ${ManagedX10BIN} Lulesh -s 20
 
 run-cpp:	${NativeX10BIN}
-	${NativeX10BIN} ${APPFLAG}
+	${NativeX10BIN} -s 20
 
 run-poe:	${NativeX10BIN}
-	poe ${NativeX10BIN} ${APPFLAG}
+	poe ${NativeX10BIN} -s 20
 
 run-mpi:	${NativeX10BIN}
 	mpiexec -n 8 -env X10_NTHREADS 1 ${NativeX10BIN} -s 10
+
+run-resilient:	${NativeX10BIN}
+	mpiexec -n 11 -env X10_NTHREADS 1 ${NativeX10BIN} -s 10 -i 6 -e 3 -k 5
 
 DOCSRC=$(shell find ${SRCPATH} -type f -iname '*.x10')
 

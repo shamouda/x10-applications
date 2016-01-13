@@ -15,9 +15,11 @@ import x10.regionarray.Region;
 import x10.util.Stack;
 import x10.util.Team;
 import x10.util.Timer;
+import x10.util.resilient.iterative.PlaceGroupBuilder;
 
 /** Manages updates of ghost data for LULESH. */
 public final class GhostManager {
+    static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
     // LocalState is Unserializable to catch programming errors;
     // instances of this class should never be sent across Places.
     static class LocalState implements x10.io.Unserializable {
@@ -153,6 +155,8 @@ public final class GhostManager {
     }
 
     public val localState:PlaceLocalHandle[LocalState];
+    private var team:Team;
+    private var places:PlaceGroup;
 
     /**
      * Create a GhostManager to coordinate data exchange.
@@ -166,15 +170,21 @@ public final class GhostManager {
                     initNeighborsSend:() => Rail[Long],
                     initNeighborsRecv:() => Rail[Long],
                     sideLength:Long,
-                    accessFields:(Domain) => Rail[Rail[Double]]) {
+                    accessFields:(Domain) => Rail[Rail[Double]],
+                    places:PlaceGroup,
+                    team:Team) {
+        this.places = places;
+        this.team = team;
+        val numPlaces = places.size();
         // First, create the LocalState of the GhostManager at each Place.
-        val ls = PlaceLocalHandle.make[LocalState](Place.places(), () => { 
+        val ls = PlaceLocalHandle.make[LocalState](places, () => { 
             new LocalState(domainPlh, initNeighborsSend(), initNeighborsRecv(), sideLength, accessFields)
         });
         this.localState = ls;
 
         // Next, gather the GlobalRails I need to communicate with my neighbors
-        Place.places().broadcastFlat(()=> {
+        val tmpPlaces = places;
+        places.broadcastFlat(()=> {
             val ls2 = ls();
             val rrb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteRecvBuffers);
             val rsb_gr = GlobalRail[GlobalRail[Double]](ls2.remoteSendBuffers);
@@ -182,9 +192,9 @@ public final class GhostManager {
             finish {
                 if (Lulesh.SYNCH_GHOST_EXCHANGE) {
                     // Initialize remoteSendBuffers with GlobalRails to source remote sendBuffer
-                    val recvId = here.id;
+                    val recvId = tmpPlaces.indexOf(here.id);
                     for (i in ls2.neighborListRecv.range) {
-                        at (Place(ls2.neighborListRecv(i))) async {
+                        at (tmpPlaces(ls2.neighborListRecv(i))) async {
                             val ls3 = ls();
                             val bufIdx = ls3.getSendNeighborNumber(recvId);
                             val gr = GlobalRail[Double](ls3.sendBuffers(bufIdx));
@@ -195,9 +205,9 @@ public final class GhostManager {
                     }
                 } else {
                     // Initialize remoteRecvBuffers with GlobalRails to target remote recvBuffer
-                    val senderId = here.id;
+                    val senderId = tmpPlaces.indexOf(here.id);
                     for (i in ls2.neighborListSend.range) {
-                        at (Place(ls2.neighborListSend(i))) async {
+                        at (tmpPlaces(ls2.neighborListSend(i))) async {
                             val ls3 = ls();
                             val bufIdx = ls3.getRecvNeighborNumber(senderId);
                             val gr = GlobalRail[Double](ls3.recvBuffers(bufIdx));
@@ -273,7 +283,6 @@ public final class GhostManager {
         val src_ls = localState();
         atomic src_ls.currentPhase++;
         val sourceDom = src_ls.domainPlh();
-        val sourceId = here.id;
         for (i in src_ls.neighborListSend.range) {
             val data = src_ls.sendBuffers(i);
             sourceDom.gatherData(data, src_ls.sendRegions(i), src_ls.accessFields, src_ls.sideLength);
@@ -333,7 +342,9 @@ public final class GhostManager {
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        Team.WORLD.barrier();
+        if (VERBOSE) Console.OUT.println(here + "- pre barrier");
+        team.barrier();
+        if (VERBOSE) Console.OUT.println(here + "- pro barrier");
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
@@ -367,7 +378,7 @@ public final class GhostManager {
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
-        val sourceId = here.id;
+        val sourceId = places.indexOf(here.id);
         val sourceDom = src_ls.domainPlh();
         val phase = src_ls.currentPhase;
         for (i in src_ls.neighborListSend.range) {
@@ -411,7 +422,11 @@ public final class GhostManager {
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        Team.WORLD.barrier();
+        
+        if (VERBOSE) Console.OUT.println(here + "- pre barrier");
+        team.barrier();
+        if (VERBOSE) Console.OUT.println(here + "- pro barrier");
+        
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
@@ -445,7 +460,7 @@ public final class GhostManager {
         val start = Timer.nanoTime();
         val src_ls = localState();
         atomic src_ls.currentPhase++;
-        val sourceId = here.id;
+        val sourceId = places.indexOf(here.id);
         val sourceDom = src_ls.domainPlh();
         val phase = src_ls.currentPhase;
         for (i in src_ls.neighborListSend.range) {
@@ -497,7 +512,9 @@ public final class GhostManager {
         // (b) wait for everyone else to have packed their data
         val t2 = Timer.nanoTime();
         ls.processTime += (t2 - t1);
-        Team.WORLD.barrier();
+        if (VERBOSE) Console.OUT.println(here + "- pre barrier");
+        team.barrier();
+        if (VERBOSE) Console.OUT.println(here + "- pro barrier");
         val t3 = Timer.nanoTime();
         ls.waitTime += (t3 - t2);
 
@@ -519,5 +536,9 @@ public final class GhostManager {
             dom.updateGhosts(ls.recvBuffers(i), ls.accessFields, ghostRegionSize, ghostOffset);
         }
         ls.processTime += (Timer.nanoTime() - t4);
+    }
+    
+    public def destroyLocalState(){
+        PlaceLocalHandle.destroy(places, localState, (Place)=>true);
     }
 }

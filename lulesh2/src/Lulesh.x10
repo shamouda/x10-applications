@@ -17,6 +17,11 @@ import x10.compiler.StackAllocate;
 import x10.compiler.StackAllocateUninitialized;
 import x10.util.Team;
 import x10.util.Timer;
+import x10.util.resilient.iterative.LocalViewResilientIterativeApp;
+import x10.util.resilient.iterative.ApplicationSnapshotStore;
+import x10.util.resilient.iterative.LocalViewResilientExecutor;
+import x10.util.resilient.iterative.PlaceGroupBuilder;
+
 
 /** 
  * X10 implementation of the LULESH proxy app, based on LULESH version 2.0.3.
@@ -31,6 +36,8 @@ import x10.util.Timer;
  *  -f <filepieces> : Number of file parts for viz output (def: np/9)
  *  -p              : Print out progress
  *  -v              : Output viz file (requires compiling with -DVIZ_MESH
+ *  -e              : Number of extra spare places
+ *  -y              : Ignore place (for testing purposes only)
  *  -h              : This message
  * </p>
  * @see <a href="https://codesign.llnl.gov/lulesh.php">Co-design at Lawrence
@@ -42,21 +49,23 @@ import x10.util.Timer;
  * @see "I. Karlin et al. LULESH Programming Model and Performance Ports 
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
-public final class Lulesh {
+public final class Lulesh implements LocalViewResilientIterativeApp {
     static PRINT_COMM_TIME = System.getenv("LULESH_PRINT_COMM_TIME") != null;
     static SYNCH_GHOST_EXCHANGE = System.getenv("LULESH_SYNCH_GHOSTS") != null;
+    static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
 
     /** The simulation domain at each place. */
-    protected val domainPlh:PlaceLocalHandle[Domain];
+    protected val distDomain:DistDomain;
+    //protected val domainPlh:PlaceLocalHandle[Domain];
 
     /** Manager for nodal mass updates between all neighbors */
-    protected val massGhostMgr:GhostManager;
+    protected var massGhostMgr:GhostManager;
     /** Manager for positions and velocity updates between all neighbors */
-    protected val posVelGhostMgr:GhostManager;
+    protected var posVelGhostMgr:GhostManager;
     /** Manager for force updates between all neighbors */
-    protected val forceGhostMgr:GhostManager;
+    protected var forceGhostMgr:GhostManager;
     /** Manager for position gradient updates between plane neighbors */
-    protected val gradientGhostMgr:GhostManager;
+    protected var gradientGhostMgr:GhostManager;
 
     static val NUM_LOOPS = 38;
     /** Time (in ns) spent executing each of the parallel loops in LULESH. */
@@ -72,27 +81,35 @@ public final class Lulesh {
 }
     }
 
-    private static val EXIT_CODE_INCORRECT_USAGE = 2n;
+    public static val EXIT_CODE_INCORRECT_USAGE = 2n;
 
+    public var places:PlaceGroup;
+    public var team:Team;
+    public val opts:CommandLineOptions;
+    
     public static def main(args:Rail[String]) {
-        val placesPerSide = Math.cbrt((Place.numPlaces() as Double) + 0.5) as Int;
-        if  (placesPerSide*placesPerSide*placesPerSide != Place.numPlaces() as Int) {
-            Console.ERR.println("Num processors must be a cube of an integer (1, 8, 27, ...)");
+        val opts = CommandLineOptions.parse(args);
+        if (opts == null) {
             System.setExitCode(EXIT_CODE_INCORRECT_USAGE);
             return;
         }
-
-        val opts = CommandLineOptions.parse(args);
-        if (opts == null) {
+        
+        val places = PlaceGroupBuilder.execludeSparePlaces(opts.spare);
+        val numPlaces = places.size();
+        
+        val placesPerSide = Math.cbrt((numPlaces as Double) + 0.5) as Int;
+        if  (placesPerSide <= 0 || placesPerSide*placesPerSide*placesPerSide != numPlaces as Int) {
+            Console.ERR.println("Num processors must be a perfect cube (1, 8, 27, ...)");
             System.setExitCode(EXIT_CODE_INCORRECT_USAGE);
             return;
         }
 
         if (!opts.quiet) {
             Console.OUT.printf("Running problem size %d^3 per domain until completion\n", opts.nx);
-            Console.OUT.printf("Num places: %d\n", Place.numPlaces());
+            Console.OUT.printf("Num places: %d\n", numPlaces);
             Console.OUT.printf("Num threads: %d\n", x10.xrx.Runtime.NTHREADS);
-            Console.OUT.printf("Total number of elements: %d\n\n", Place.numPlaces()*opts.nx*opts.nx*opts.nx);
+            Console.OUT.printf("Num spare places: %d\n", opts.spare);
+            Console.OUT.printf("Total number of elements: %d\n\n", numPlaces*opts.nx*opts.nx*opts.nx);
             Console.OUT.printf("To run other sizes, use -s <integer>.\n");
             Console.OUT.printf("To run a fixed number of iterations, use -i <integer>.\n");
             Console.OUT.printf("To run a more or less balanced region set, use -b <integer>.\n");
@@ -102,85 +119,81 @@ public final class Lulesh {
             Console.OUT.printf("See help (-h) for more options\n\n");
         }
 
-        new Lulesh(opts, placesPerSide).run(opts);
+        new Lulesh(opts, placesPerSide, places).run(opts);
     }
 
-    public def this(opts:CommandLineOptions, placesPerSide:Int) {
-        val domainPlh = PlaceLocalHandle.make[Domain](Place.places(), 
-            () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide));
-        this.domainPlh = domainPlh;
-
+    public def this(opts:CommandLineOptions, placesPerSide:Int, places:PlaceGroup) {
+        this.places = places;
+        this.team = new Team(places);
+        this.opts = opts;
+        val domainPlh = PlaceLocalHandle.make[Domain](places, 
+            () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places));
+        this.distDomain = new DistDomain(domainPlh, places);
+    }
+    
+    public def initGhostManagers(){
+        val domainPlh = distDomain.domainPlh;
         // initialize ghost update managers
+        if (this.massGhostMgr != null)
+            this.massGhostMgr.destroyLocalState();
         this.massGhostMgr = new GhostManager(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 opts.nx+1,
-                (dom:Domain) => [dom.nodalMass]);
+                (dom:Domain) => [dom.nodalMass],
+                places,
+                team);
+        if (this.posVelGhostMgr != null)
+            this.posVelGhostMgr.destroyLocalState();
         this.posVelGhostMgr = new GhostManager(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, false, true),
                 () => domainPlh().loc.createNeighborList(false, true, false),
                 opts.nx+1,
-                (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd]);
+                (dom:Domain) => [dom.x, dom.y, dom.z, dom.xd, dom.yd, dom.zd],
+                places,
+                team);
+        if (this.forceGhostMgr != null)
+            this.forceGhostMgr.destroyLocalState();
         this.forceGhostMgr = new GhostManager(domainPlh,
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 () => domainPlh().loc.createNeighborList(false, true, true),
                 opts.nx+1,
-                (dom:Domain) => [dom.fx, dom.fy, dom.fz]);
+                (dom:Domain) => [dom.fx, dom.fy, dom.fz],
+                places,
+                team);
+        if (this.gradientGhostMgr != null)
+            this.gradientGhostMgr.destroyLocalState();
         this.gradientGhostMgr = new GhostManager(domainPlh, 
                 () => domainPlh().loc.createNeighborList(true, true, true),
                 () => domainPlh().loc.createNeighborList(true, true, true),
                 opts.nx, 
-                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta]);
+                (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
+                places,
+                team);
     }
-
+    
     public def run(opts:CommandLineOptions) {
-        finish for (place in Place.places()) at(place) async {
-            val domain = domainPlh();
+        val appStartTime = Timer.milliTime();
+        
+        initGhostManagers();
+        
+        new LocalViewResilientExecutor(opts.checkpointFreq, places).run(this, appStartTime);
 
-            if (PRINT_COMM_TIME) {
-                printLoadImbalance(domain);
-            }
+        finish for (place in places) at(place) async {
+            val domain = distDomain.domainPlh();
+            val elapsedTimeMillis = Timer.milliTime() - domain.startTimeMillis;
+            domain.elapsedTimeMillis = team.allreduce(elapsedTimeMillis, Team.MAX);
+        }
 
-            if (SYNCH_GHOST_EXCHANGE) {
-                massGhostMgr.exchangeAndCombineBoundaryData();
-            } else {
-                massGhostMgr.gatherBoundariesToCombine();
-                massGhostMgr.waitAndCombineBoundaries();
-            }
-
-	    Team.WORLD.barrier();
-
-            val start = Timer.milliTime();
-
-            //debug to see region sizes
-            //for (var i:Long = 0; i < domain.numReg; i++)
-            //    Console.OUT.println("region " + (i + 1) + " size " + domain.regElemList(i).size);
-
-            while((domain.time < domain.stopTime) && (domain.cycle < opts.its)) {
-                timeIncrement(domain);
-
-                lagrangeLeapFrog(domain);
-
-                if (opts.showProg && !opts.quiet && here.equals(Place.FIRST_PLACE)) {
-                    Console.OUT.printf("cycle = %d, time = %e, dt=%e\n",
-                        domain.cycle, domain.time, domain.deltatime);
-                }
-            }
-
-            val elapsedTimeMillis = Timer.milliTime() - start;
-            domain.elapsedTimeMillis = Team.WORLD.allreduce(elapsedTimeMillis, Team.MAX);
-
-        } // at(place) async
-
-        val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
-        verifyAndWriteFinalOutput(elapsedTime, domainPlh());
+        val elapsedTime = (distDomain.domainPlh().elapsedTimeMillis) / 1e3;
+        verifyAndWriteFinalOutput(elapsedTime, distDomain.domainPlh());
 
         var reportCommTime:Boolean = PRINT_COMM_TIME;
 @Ifdef("__RECORD_LOOP_TIMES__") {
         reportCommTime = true;
-        val allTimes = new Rail[Rail[Long]](Place.numPlaces());
-        for (p in Place.places()) {
-            allTimes(p.id) = at (p) Lulesh.loopTimes;
+        val allTimes = new Rail[Rail[Long]](places.size());
+        for (i in 0..(places.size()-1)) {
+            allTimes(i) = at (places(i)) Lulesh.loopTimes;
         }
         Console.OUT.println("### Loop times (in microseconds) ###");
         Console.OUT.print("LoopID,");
@@ -198,15 +211,15 @@ public final class Lulesh {
 }
 
         if (reportCommTime) {
-            val allCommTimes = new Rail[Rail[Long]](Place.numPlaces());
-            for (p in Place.places()) {
-                allCommTimes(p.id) = at (p) [posVelGhostMgr.localState().waitTime, posVelGhostMgr.localState().processTime, 
+            val allCommTimes = new Rail[Rail[Long]](places.size());
+            for (i in 0..(places.size()-1)) {
+                allCommTimes(i) = at (places(i)) [posVelGhostMgr.localState().waitTime, posVelGhostMgr.localState().processTime, 
                                              posVelGhostMgr.localState().sendTime,
 					     forceGhostMgr.localState().waitTime, forceGhostMgr.localState().processTime, 
 					     forceGhostMgr.localState().sendTime,
                                              gradientGhostMgr.localState().waitTime, gradientGhostMgr.localState().processTime, 
                                              gradientGhostMgr.localState().sendTime,
-                                             domainPlh().allreduceTime];
+                                             distDomain.domainPlh().allreduceTime];
             }
             Console.OUT.println("### Communication related times (in microseconds) ###");
             Console.OUT.print("PhaseLabel,");
@@ -226,6 +239,75 @@ public final class Lulesh {
                 Console.OUT.println();
             }
         }
+    }
+
+    public def isFinished_local():Boolean {
+        val domain = distDomain.domainPlh();
+        return !((domain.time < domain.stopTime) && (domain.cycle < opts.its));
+    }
+    
+    public def step_local():void {
+        val domain = distDomain.domainPlh();
+        if (domain.cycle == 0n){
+            if (PRINT_COMM_TIME) {
+                printLoadImbalance(domain);
+            }
+
+            if (SYNCH_GHOST_EXCHANGE) {
+                massGhostMgr.exchangeAndCombineBoundaryData();
+            } else {
+                massGhostMgr.gatherBoundariesToCombine();
+                massGhostMgr.waitAndCombineBoundaries();
+            }
+
+	        team.barrier();
+
+            domain.startTimeMillis = Timer.milliTime();
+            //debug to see region sizes
+            //for (var i:Long = 0; i < domain.numReg; i++)
+            //    Console.OUT.println("region " + (i + 1) + " size " + domain.regElemList(i).size);
+        }
+        
+        
+        timeIncrement(domain);
+
+        lagrangeLeapFrog(domain);
+
+        if (opts.showProg && !opts.quiet && here.equals(Place.FIRST_PLACE)) {
+            Console.OUT.printf("cycle = %d, time = %e, dt=%e\n",
+                domain.cycle, domain.time, domain.deltatime);
+        }
+        
+    }
+
+    public def checkpoint(store:ApplicationSnapshotStore):void {
+        Console.OUT.println("Starting checkpoint ...");
+        store.startNewSnapshot();
+        store.save(distDomain);
+        store.commit();
+        Console.OUT.println("Checkpoint saved successfully ...");
+    }
+
+    public def restore(newPlaces:PlaceGroup, store:ApplicationSnapshotStore, lastCheckpointIter:Long, newAddedPlaces:x10.util.ArrayList[x10.lang.Place]):void {
+        if (VERBOSE) Console.OUT.println("Start restore ...");
+        var remakeDomainTime:Long = 0;
+        remakeDomainTime -= Timer.milliTime();
+        distDomain.remake(newPlaces, opts);
+        remakeDomainTime += Timer.milliTime();
+        
+        store.restore();
+        
+        this.places = newPlaces;
+        var teamCreationTime:Long = 0;
+        teamCreationTime -= Timer.milliTime();
+        this.team = new Team(places);
+        teamCreationTime += Timer.milliTime();
+        
+        var initTime:Long = 0;
+        initTime -= Timer.milliTime();
+        initGhostManagers();
+        initTime += Timer.milliTime();
+        Console.OUT.println("Restore succeeded:startingAtIteration:"+lastCheckpointIter+":remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime+":createTeamTime:"+teamCreationTime);
     }
 
     /**
@@ -248,10 +330,10 @@ public final class Lulesh {
                 rep = 10n * (1n + domain.cost);
             repTimesNumElem += rep * domain.regElemList(r).size;
         }
-        val maxLoad = Team.WORLD.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
-        val totalLoad = Team.WORLD.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
+        val maxLoad = team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
+        val totalLoad = team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
         if (here.equals(Place.FIRST_PLACE)) {
-            val meanLoad = totalLoad/Place.numPlaces();
+            val meanLoad = totalLoad/places.size();
             Console.OUT.printf("region load max %d average %d imbalance %f\n", maxLoad, meanLoad, (maxLoad*1.0/meanLoad)-1.0);
         }
     }
@@ -276,7 +358,9 @@ public final class Lulesh {
             }
 
             val start = Timer.milliTime();
-            newDt = Team.WORLD.allreduce(gNewDt, Team.MIN);
+            if (VERBOSE) Console.OUT.println(here + "- pre allreduce ...");
+            newDt = team.allreduce(gNewDt, Team.MIN);
+            if (VERBOSE) Console.OUT.println(here + "- pro allreduce ...");
             domain.allreduceTime += Timer.milliTime() - start;
 
             ratio = newDt / oldDt;
@@ -294,7 +378,7 @@ public final class Lulesh {
             domain.deltatime = newDt;
         } else {
             // TODO: without this barrier, fixed timestep can deadlock - why?
-            Team.WORLD.barrier();
+            team.barrier();
         }
 
         /* TRY TO PREVENT VERY SMALL SCALING ON THE NEXT CYCLE */
@@ -316,11 +400,11 @@ public final class Lulesh {
         lagrangeNodal(domain);
 
         lagrangeElements(domain);
+                
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
 
         posVelGhostMgr.updateBoundaryData();
 }
-
         calcTimeConstraintsForElems(domain);
 
 @Ifdef("SEDOV_SYNC_POS_VEL_LATE") {
@@ -335,19 +419,19 @@ public final class Lulesh {
     protected def lagrangeNodal(domain:Domain) {
         val delt = domain.deltatime;
         var u_cut:Double = domain.u_cut;
-
+        
         // time of boundary condition evaluation is beginning of step for force 
         // and acceleration boundary conditions. 
         calcForceForNodes(domain);
-
+        
         calcAccelerationForNodes(domain);
-
+        
         applyAccelerationBoundaryConditionsForNodes(domain);
-
+        
         calcVelocityForNodes(domain, delt, u_cut);
-
+        
         calcPositionForNodes(domain, delt);
-
+        
 @Ifdef("SEDOV_SYNC_POS_VEL_EARLY") {                                          
         if (SYNCH_GHOST_EXCHANGE) {
             posVelGhostMgr.exchangeBoundaryData();
@@ -407,7 +491,7 @@ endLoop(0);
         calcVolumeForceForElems(domain);
 
         if (SYNCH_GHOST_EXCHANGE) {
-            forceGhostMgr.exchangeAndCombineBoundaryData();
+            forceGhostMgr.exchangeAndCombineBoundaryData();            
         } else {
             forceGhostMgr.gatherBoundariesToCombine();
             forceGhostMgr.waitAndCombineBoundaries();
@@ -1944,12 +2028,12 @@ endLoop(37);
         // processor speed independent of multi-place parallelism.
         // GrindTime2 takes into account speedups from multi-place parallelism 
         val grindTime1 = ((elapsedTime*1e6)/domain.cycle)/(nx*nx*nx);
-        val grindTime2 = ((elapsedTime*1e6)/domain.cycle)/(nx*nx*nx*Place.numPlaces());
+        val grindTime2 = ((elapsedTime*1e6)/domain.cycle)/(nx*nx*nx*places.size());
 
         var elemId:Long = 0;
         Console.OUT.printf("Run completed:  \n");
         Console.OUT.printf("   Problem size        =  %d \n",    nx);
-        Console.OUT.printf("   Number of places    =  %d \n",    Place.numPlaces());
+        Console.OUT.printf("   Number of places    =  %d \n",    places.size());
         Console.OUT.printf("   Iteration count     =  %d \n",    domain.cycle);
         Console.OUT.printf("   Final Origin Energy = %12.6e \n", domain.e(elemId));
 
@@ -2033,8 +2117,8 @@ endLoop(37);
         elemZ(6) = domain.z(nd6i);
         elemZ(7) = domain.z(nd7i);
     }
-}
 
+}
 // TODO Precision specification
 
 // vim:tabstop=4:shiftwidth=4:expandtab
