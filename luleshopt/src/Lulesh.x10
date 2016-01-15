@@ -303,7 +303,10 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         distDomain.remake(newPlaces, opts);
         remakeDomainTime += Timer.milliTime();
         
-        distDomain.restoreSnapshot_local(store);
+        finish ateach(Dist.makeUnique(newPlaces)) {
+        	store.printKeys_local();
+            distDomain.restoreSnapshot_local(store);
+        }
         
         this.places = newPlaces;
         this.team = newTeam;
@@ -314,6 +317,30 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         initTime += Timer.milliTime();
         Console.OUT.println("Restore succeeded:startingAtIteration:"+lastCheckpointIter+":remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime);
     }
+    
+    
+    public def remake(newPlaces:PlaceGroup, newTeam:Team, newAddedPlaces:ArrayList[Place]) {
+    	if (VERBOSE) Console.OUT.println("Application remake started ...");
+        var remakeDomainTime:Long = 0;
+        remakeDomainTime -= Timer.milliTime();
+        distDomain.remake(newPlaces, opts);
+        remakeDomainTime += Timer.milliTime();
+        
+        this.places = newPlaces;
+        this.team = newTeam;
+        
+        var initTime:Long = 0;
+        initTime -= Timer.milliTime();
+        initGhostManagers();
+        initTime += Timer.milliTime();
+        Console.OUT.println("Application remake succeeded:remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime);
+    }
+    
+    public def restore_local(store:DistObjectSnapshot, lastCheckpointIter:Long):void {
+    	if (VERBOSE) Console.OUT.println("["+here+"] Data restore started ...");
+    	distDomain.restoreSnapshot_local(store);
+    	if (VERBOSE) Console.OUT.println("["+here+"] Data restore Succeeded, startingAtIteration:"+lastCheckpointIter);
+    }  
 
     /**
      * Compute and print the load imbalance between places in simulating
