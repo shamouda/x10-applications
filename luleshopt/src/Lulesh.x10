@@ -22,7 +22,7 @@ import x10.util.resilient.iterative.LocalViewResilientIterativeAppOpt;
 import x10.util.resilient.iterative.DistObjectSnapshot;
 import x10.util.resilient.iterative.LocalViewResilientExecutorOpt;
 import x10.util.resilient.iterative.PlaceGroupBuilder;
-
+import x10.regionarray.Dist;
 
 /** 
  * X10 implementation of the LULESH proxy app, based on LULESH version 2.0.3.
