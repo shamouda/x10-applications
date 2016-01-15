@@ -296,7 +296,7 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
     	distDomain.makeSnapshot_local(store);
     }
     
-    public def restore(newPlaces:PlaceGroup, newTeam:Team, store:DistObjectSnapshot, lastCheckpointIter:Long, newAddedPlaces:ArrayList[Place]) 
+    public def restore(newPlaces:PlaceGroup, newTeam:Team, store:DistObjectSnapshot, lastCheckpointIter:Long, newAddedPlaces:ArrayList[Place]) {
         if (VERBOSE) Console.OUT.println("Start restore ...");
         var remakeDomainTime:Long = 0;
         remakeDomainTime -= Timer.milliTime();
