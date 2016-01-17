@@ -294,8 +294,7 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
 
     public def checkpoint_local(store:DistObjectSnapshot) {
     	distDomain.makeSnapshot_local(store);
-    	Console.OUT.println("====>  ["+here+"] finished checkpointing ===> ");
-    	store.printKeys_local();
+    	if (VERBOSE) Console.OUT.println("====>  ["+here+"] finished checkpointing ===> ");
     }
     
     public def restore(newPlaces:PlaceGroup, newTeam:Team, store:DistObjectSnapshot, lastCheckpointIter:Long, newAddedPlaces:ArrayList[Place]) {
