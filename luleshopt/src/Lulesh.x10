@@ -287,8 +287,8 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         lagrangeLeapFrog(domain);
 
         if (opts.showProg && !opts.quiet && here.equals(Place.FIRST_PLACE)) {
-            Console.OUT.printf("cycle = %d, time = %e, dt=%e\n",
-                domain.cycle, domain.time, domain.deltatime);
+            Console.OUT.printf("cycle = %d, time = %e, dt=%e   (now:%d)\n",
+                domain.cycle, domain.time, domain.deltatime, Timer.milliTime());
         }
         
     }
