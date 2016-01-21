@@ -273,8 +273,9 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
             }
 
 	        team.barrier();
-
-            domain.startTimeMillis = Timer.milliTime();
+	        
+	        if (domain.startTimeMillis == 0) //to avoid resetting the start time after rollback
+                domain.startTimeMillis = Timer.milliTime();
             //debug to see region sizes
             //for (var i:Long = 0; i < domain.numReg; i++)
             //    Console.OUT.println("region " + (i + 1) + " size " + domain.regElemList(i).size);
