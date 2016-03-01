@@ -188,8 +188,9 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         val appStartTime = Timer.milliTime();
         
         initGhostManagers();
-        
-        new LocalViewResilientExecutorOpt(opts.checkpointFreq, places, true).run(this, appStartTime);
+        val implicitBarrier = true;
+        val createReadOnlyStore = false;
+        new LocalViewResilientExecutorOpt(opts.checkpointFreq, places, implicitBarrier, createReadOnlyStore).run(this, appStartTime);
 
         finish for (place in places) at(place) async {
             val domain = distDomain.domainPlh();
@@ -293,33 +294,10 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         
     }
 
-    public def checkpoint_local(store:DistObjectSnapshot) {
-    	distDomain.makeSnapshot_local(store);
+    public def checkpoint_local(store:DistObjectSnapshot, readOnlyStore:DistObjectSnapshot) {
+    	distDomain.makeSnapshot_local("D", store);
     	if (VERBOSE) Console.OUT.println("====>  ["+here+"] finished checkpointing ===> ");
     }
-    
-    public def restore(newPlaces:PlaceGroup, newTeam:Team, store:DistObjectSnapshot, lastCheckpointIter:Long, newAddedPlaces:ArrayList[Place]) {
-        if (VERBOSE) Console.OUT.println("Start restore ...");
-        var remakeDomainTime:Long = 0;
-        remakeDomainTime -= Timer.milliTime();
-        distDomain.remake(newPlaces, opts);
-        remakeDomainTime += Timer.milliTime();
-        
-        finish ateach(Dist.makeUnique(newPlaces)) {
-        	store.printKeys_local();
-            distDomain.restoreSnapshot_local(store);
-        }
-        
-        this.places = newPlaces;
-        this.team = newTeam;
-        
-        var initTime:Long = 0;
-        initTime -= Timer.milliTime();
-        initGhostManagers();
-        initTime += Timer.milliTime();
-        Console.OUT.println("Restore succeeded:startingAtIteration:"+lastCheckpointIter+":remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime);
-    }
-    
     
     public def remake(newPlaces:PlaceGroup, newTeam:Team, newAddedPlaces:ArrayList[Place]) {
     	if (VERBOSE) Console.OUT.println("Application remake started ...");
@@ -338,9 +316,9 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         Console.OUT.println("Application remake succeeded:remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime);
     }
     
-    public def restore_local(store:DistObjectSnapshot, lastCheckpointIter:Long):void {
+    public def restore_local(store:DistObjectSnapshot, readOnlyStore:DistObjectSnapshot, lastCheckpointIter:Long):void {
     	if (VERBOSE) Console.OUT.println("["+here+"] Data restore started ...");
-    	distDomain.restoreSnapshot_local(store);
+    	distDomain.restoreSnapshot_local("D", store);
     	if (VERBOSE) Console.OUT.println("["+here+"] Data restore Succeeded, startingAtIteration:"+lastCheckpointIter);
     }  
 

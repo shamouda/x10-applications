@@ -57,19 +57,19 @@ class DistDomain implements Snapshottable {
         }
     }
     
-    public def makeSnapshot_local(snapshot:DistObjectSnapshot) {
+    public def makeSnapshot_local(prefix:String, snapshot:DistObjectSnapshot) {
         if (VERBOSE) Console.OUT.println(here + " start make snapshot local >>>>>>>");
         val i = places.indexOf(here);
         val localDomain = domainPlh();
         val domainSnapInfo = new DomainSnapshot(localDomain);
-        snapshot.save("D"+i, domainSnapInfo);
+        snapshot.save(prefix+i, domainSnapInfo);
         if (VERBOSE)  Console.OUT.println(here + " end make snapshot local >>>>>>>");
     }
     
-    public def restoreSnapshot_local(snapshot:DistObjectSnapshot) {
+    public def restoreSnapshot_local(prefix:String, snapshot:DistObjectSnapshot) {
         if (VERBOSE) Console.OUT.println(here + " start restore local #####");
         val i = places.indexOf(here);
-        val storedDomain = snapshot.load("D"+i) as DomainSnapshot;
+        val storedDomain = snapshot.load(prefix+i) as DomainSnapshot;
         storedDomain.populateDomain(domainPlh());
         if (VERBOSE) Console.OUT.println(here + " end restore local #####");
     }
