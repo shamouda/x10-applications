@@ -17,11 +17,12 @@ import x10.compiler.StackAllocate;
 import x10.compiler.StackAllocateUninitialized;
 import x10.util.Team;
 import x10.util.Timer;
-import x10.util.resilient.iterative.LocalViewResilientIterativeApp;
-import x10.util.resilient.iterative.ApplicationSnapshotStore;
-import x10.util.resilient.iterative.LocalViewResilientExecutor;
+import x10.util.ArrayList;
+import x10.util.resilient.iterative.LocalViewResilientIterativeAppOpt;
+import x10.util.resilient.iterative.DistObjectSnapshot;
+import x10.util.resilient.iterative.LocalViewResilientExecutorOpt;
 import x10.util.resilient.iterative.PlaceGroupBuilder;
-
+import x10.regionarray.Dist;
 
 /** 
  * X10 implementation of the LULESH proxy app, based on LULESH version 2.0.3.
@@ -49,7 +50,7 @@ import x10.util.resilient.iterative.PlaceGroupBuilder;
  * @see "I. Karlin et al. LULESH Programming Model and Performance Ports 
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
-public final class Lulesh implements LocalViewResilientIterativeApp {
+public final class Lulesh implements LocalViewResilientIterativeAppOpt {
     static PRINT_COMM_TIME = System.getenv("LULESH_PRINT_COMM_TIME") != null;
     static SYNCH_GHOST_EXCHANGE = System.getenv("LULESH_SYNCH_GHOSTS") != null;
     static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
@@ -187,8 +188,9 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         val appStartTime = Timer.milliTime();
         
         initGhostManagers();
-        
-        new LocalViewResilientExecutor(opts.checkpointFreq, places).run(this, appStartTime);
+        val implicitBarrier = true;
+        val createReadOnlyStore = false;
+        new LocalViewResilientExecutorOpt(opts.checkpointFreq, places, implicitBarrier, createReadOnlyStore).run(this, appStartTime);
 
         finish for (place in places) at(place) async {
             val domain = distDomain.domainPlh();
@@ -272,7 +274,7 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
             }
 
 	        team.barrier();
-
+	        
 	        if (domain.startTimeMillis == 0) //to avoid resetting the start time after rollback
                 domain.startTimeMillis = Timer.milliTime();
             //debug to see region sizes
@@ -286,41 +288,39 @@ public final class Lulesh implements LocalViewResilientIterativeApp {
         lagrangeLeapFrog(domain);
 
         if (opts.showProg && !opts.quiet && here.equals(Place.FIRST_PLACE)) {
-            Console.OUT.printf("cycle = %d, time = %e, dt=%e\n",
-                domain.cycle, domain.time, domain.deltatime);
+            Console.OUT.printf("cycle = %d, time = %e, dt=%e   (now:%d)\n",
+                domain.cycle, domain.time, domain.deltatime, Timer.milliTime());
         }
         
     }
 
-    public def checkpoint(store:ApplicationSnapshotStore):void {
-        Console.OUT.println("Starting checkpoint ...");
-        store.startNewSnapshot();
-        store.save(distDomain);
-        store.commit();
-        Console.OUT.println("Checkpoint saved successfully ...");
+    public def checkpoint_local(store:DistObjectSnapshot, readOnlyStore:DistObjectSnapshot) {
+    	distDomain.makeSnapshot_local("D", store);
+    	if (VERBOSE) Console.OUT.println("====>  ["+here+"] finished checkpointing ===> ");
     }
-
-    public def restore(newPlaces:PlaceGroup, store:ApplicationSnapshotStore, lastCheckpointIter:Long, newAddedPlaces:x10.util.ArrayList[x10.lang.Place]):void {
-        if (VERBOSE) Console.OUT.println("Start restore ...");
+    
+    public def remake(newPlaces:PlaceGroup, newTeam:Team, newAddedPlaces:ArrayList[Place]) {
+    	if (VERBOSE) Console.OUT.println("Application remake started ...");
         var remakeDomainTime:Long = 0;
         remakeDomainTime -= Timer.milliTime();
         distDomain.remake(newPlaces, opts);
         remakeDomainTime += Timer.milliTime();
         
-        store.restore();
-        
         this.places = newPlaces;
-        var teamCreationTime:Long = 0;
-        teamCreationTime -= Timer.milliTime();
-        this.team = new Team(places);
-        teamCreationTime += Timer.milliTime();
+        this.team = newTeam;
         
         var initTime:Long = 0;
         initTime -= Timer.milliTime();
         initGhostManagers();
         initTime += Timer.milliTime();
-        Console.OUT.println("Restore succeeded:startingAtIteration:"+lastCheckpointIter+":remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime+":createTeamTime:"+teamCreationTime);
+        Console.OUT.println("Application remake succeeded:remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime);
     }
+    
+    public def restore_local(store:DistObjectSnapshot, readOnlyStore:DistObjectSnapshot, lastCheckpointIter:Long):void {
+    	if (VERBOSE) Console.OUT.println("["+here+"] Data restore started ...");
+    	distDomain.restoreSnapshot_local("D", store);
+    	if (VERBOSE) Console.OUT.println("["+here+"] Data restore Succeeded, startingAtIteration:"+lastCheckpointIter);
+    }  
 
     /**
      * Compute and print the load imbalance between places in simulating
