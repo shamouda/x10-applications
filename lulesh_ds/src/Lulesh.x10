@@ -18,9 +18,10 @@ import x10.compiler.StackAllocateUninitialized;
 import x10.util.Team;
 import x10.util.Timer;
 import x10.util.ArrayList;
-import x10.util.resilient.iterative.LocalViewResilientIterativeAppOpt;
+import x10.util.HashMap;
 import x10.util.resilient.iterative.DistObjectSnapshot;
-import x10.util.resilient.iterative.LocalViewResilientExecutorOpt;
+import x10.util.resilient.iterative.LocalViewResilientExecutorDS;
+import x10.util.resilient.iterative.LocalViewResilientIterativeAppDS;
 import x10.util.resilient.iterative.PlaceGroupBuilder;
 import x10.regionarray.Dist;
 
@@ -50,7 +51,7 @@ import x10.regionarray.Dist;
  * @see "I. Karlin et al. LULESH Programming Model and Performance Ports 
     Overview, December 2012, pages 1-17, LLNL-TR-608824."
  */
-public final class Lulesh implements LocalViewResilientIterativeAppOpt {
+public final class Lulesh implements LocalViewResilientIterativeAppDS {
     static PRINT_COMM_TIME = System.getenv("LULESH_PRINT_COMM_TIME") != null;
     static SYNCH_GHOST_EXCHANGE = System.getenv("LULESH_SYNCH_GHOSTS") != null;
     static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
@@ -190,7 +191,7 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         initGhostManagers();
         val implicitBarrier = true;
         val createReadOnlyStore = false;
-        new LocalViewResilientExecutorOpt(opts.checkpointFreq, places, implicitBarrier, createReadOnlyStore).run(this, appStartTime);
+        new LocalViewResilientExecutorDS(opts.checkpointFreq, places, implicitBarrier).run(this, appStartTime);
 
         finish for (place in places) at(place) async {
             val domain = distDomain.domainPlh();
@@ -294,9 +295,8 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         
     }
 
-    public def checkpoint_local(store:DistObjectSnapshot, readOnlyStore:DistObjectSnapshot) {
-    	distDomain.makeSnapshot_local("D", store);
-    	if (VERBOSE) Console.OUT.println("====>  ["+here+"] finished checkpointing ===> ");
+    public def get_checkpoint_data_local():HashMap[Any,Any] {
+    	return distDomain.getLocalCheckpointingState();
     }
     
     public def remake(newPlaces:PlaceGroup, newTeam:Team, newAddedPlaces:ArrayList[Place]) {
@@ -316,11 +316,12 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         Console.OUT.println("Application remake succeeded:remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime);
     }
     
-    public def restore_local(store:DistObjectSnapshot, readOnlyStore:DistObjectSnapshot, lastCheckpointIter:Long):void {
-    	if (VERBOSE) Console.OUT.println("["+here+"] Data restore started ...");
-    	distDomain.restoreSnapshot_local("D", store);
-    	if (VERBOSE) Console.OUT.println("["+here+"] Data restore Succeeded, startingAtIteration:"+lastCheckpointIter);
-    }  
+    
+    public def restore_local(restoreDataMap:HashMap[Any,Any], lastCheckpointIter:Long) {
+        if (VERBOSE) Console.OUT.println("["+here+"] Data restore started ...");
+        distDomain.restoreSnapshot_local(restoreDataMap);
+        if (VERBOSE) Console.OUT.println("["+here+"] Data restore Succeeded, startingAtIteration:"+lastCheckpointIter);
+    }
 
     /**
      * Compute and print the load imbalance between places in simulating

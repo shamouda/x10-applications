@@ -12,8 +12,10 @@
 import x10.util.resilient.iterative.Snapshottable;
 import x10.util.resilient.iterative.DistObjectSnapshot;
 import x10.regionarray.Dist;
+import x10.util.resilient.map.*;
+import x10.util.HashMap;
 
-class DistDomain implements Snapshottable {
+class DistDomain {
     static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
     public var domainPlh:PlaceLocalHandle[Domain];
     public var places:PlaceGroup;
@@ -38,40 +40,24 @@ class DistDomain implements Snapshottable {
             () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places));
     }
     
-    public def makeSnapshot():DistObjectSnapshot {
-        val snapshot = DistObjectSnapshot.make();
-        finish ateach(pl in Dist.makeUnique(places)){
-             val i = places.indexOf(here);
-             val localDomain = domainPlh();
-             val domainSnapInfo = new DomainSnapshot(localDomain);
-             snapshot.save(i, domainSnapInfo);
-        }
-        return snapshot;
-    }
-    
-    public def restoreSnapshot(snapshot:DistObjectSnapshot) {
-        finish ateach(Dist.makeUnique(places)) {
-            val i = places.indexOf(here);
-            val storedDomain = snapshot.load(i) as DomainSnapshot;
-            storedDomain.populateDomain(domainPlh());
-        }
-    }
-    
-    public def makeSnapshot_local(prefix:String, snapshot:DistObjectSnapshot) {
+    public def getLocalCheckpointingState(): HashMap[Any,Any] {
         if (VERBOSE) Console.OUT.println(here + " start make snapshot local >>>>>>>");
+        val map = new HashMap[Any,Any]();
         val i = places.indexOf(here);
         val localDomain = domainPlh();
         val domainSnapInfo = new DomainSnapshot(localDomain);
-        snapshot.save(prefix+i, domainSnapInfo);
+        map.put("D"+i, domainSnapInfo);
         if (VERBOSE)  Console.OUT.println(here + " end make snapshot local >>>>>>>");
+        return map;
     }
     
-    public def restoreSnapshot_local(prefix:String, snapshot:DistObjectSnapshot) {
+    public def restoreSnapshot_local(restoreDataMap:HashMap[Any,Any]) {
         if (VERBOSE) Console.OUT.println(here + " start restore local #####");
         val i = places.indexOf(here);
-        val storedDomain = snapshot.load(prefix+i) as DomainSnapshot;
+        val storedDomain = restoreDataMap.get("D"+i) as DomainSnapshot;
         storedDomain.populateDomain(domainPlh());
         if (VERBOSE) Console.OUT.println(here + " end restore local #####");
+        
     }
 }
 // vim:tabstop=4:shiftwidth=4:expandtab
