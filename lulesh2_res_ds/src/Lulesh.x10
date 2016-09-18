@@ -25,6 +25,9 @@ import x10.util.resilient.iterative.LocalViewResilientIterativeAppDS;
 import x10.util.resilient.iterative.PlaceGroupBuilder;
 import x10.regionarray.Dist;
 
+//DS_ALL_VERBOSE=1 EXECUTOR_DEBUG=1 X10_NTHREADS=2 FORCE_ONE_PLACE_PER_NODE=1 X10_NPLACES=8 X10_RESILIENT_MODE=1 ./lulesh2.0 -s 20 -i 10 -k 20 -p
+
+
 /** 
  * X10 implementation of the LULESH proxy app, based on LULESH version 2.0.3.
  * <p>
@@ -258,12 +261,12 @@ public final class Lulesh implements LocalViewResilientIterativeAppDS {
         }
     }
 
-    public def isFinished_local():Boolean {
+    public def isFinished():Boolean {
         val domain = distDomain.domainPlh();
         return !((domain.time < domain.stopTime) && (domain.cycle < opts.its));
     }
     
-    public def step_local():void {
+    public def step():void {
         val domain = distDomain.domainPlh();
         if (domain.cycle == 0n){
             if (PRINT_COMM_TIME) {
@@ -298,7 +301,7 @@ public final class Lulesh implements LocalViewResilientIterativeAppDS {
         
     }
 
-    public def get_checkpoint_data_local():HashMap[Any,Any] {
+    public def getCheckpointMap():HashMap[Any,Any] {
     	return distDomain.getLocalCheckpointingState();
     }
     
@@ -320,7 +323,7 @@ public final class Lulesh implements LocalViewResilientIterativeAppDS {
     }
     
     
-    public def restore_local(restoreDataMap:HashMap[Any,Any], lastCheckpointIter:Long) {
+    public def restore(restoreDataMap:HashMap[Any,Any], lastCheckpointIter:Long) {
     	if (VERBOSE) Console.OUT.println("["+here+"] Data restore started ...");
         distDomain.restoreSnapshot_local(restoreDataMap);
     	if (VERBOSE) Console.OUT.println("["+here+"] Data restore Succeeded, startingAtIteration:"+lastCheckpointIter);
