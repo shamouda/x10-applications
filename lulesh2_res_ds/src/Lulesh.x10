@@ -131,7 +131,7 @@ public final class Lulesh implements LocalViewResilientIterativeAppDS {
         }
 
         val team = new Team(places);
-        teamWarmup(team);
+        //teamWarmup(team);
         new Lulesh(opts, placesPerSide, places, team).run(opts);
     }
 
@@ -2151,9 +2151,8 @@ endLoop(36); // fused loops 36-37
     	
     	
     	finish for (place in Place.places()) at (place) async {
-    		team.reduce(root, 1.0, Team.ADD);
-    		
-    		if (here.id == 0) Console.OUT.println(here+" reduce done ...");
+    		//team.reduce(root, 1.0, Team.ADD);
+    		//if (here.id == 0) Console.OUT.println(here+" reduce done ...");
     	
     		team.allreduce(1.0, Team.ADD);
     		if (here.id == 0) Console.OUT.println(here+" allreduce done ...");
