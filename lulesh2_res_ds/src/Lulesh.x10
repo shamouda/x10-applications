@@ -26,11 +26,13 @@ import x10.util.resilient.iterative.PlaceGroupBuilder;
 import x10.regionarray.Dist;
 
 //DS_ALL_VERBOSE=1 EXECUTOR_DEBUG=1 X10_NTHREADS=2 FORCE_ONE_PLACE_PER_NODE=1 X10_NPLACES=8 X10_RESILIENT_MODE=1 ./lulesh2.0 -s 20 -i 10 -k 20 -p
-//(test killing 3 places)
-//Socket 
+//
+//Socket (test killing 3 places) 
 //X10_PLACE_GROUP_RESTORE_MODE=1 FORCE_ONE_PLACE_PER_NODE=1 DISABLE_ULFM_AGREEMENT=1 EXECUTOR_KILL_STEPS=5,16 EXECUTOR_KILL_PLACES=2,5 X10_NTHREADS=1 X10_RESILIENT_MODE=1 X10_NPLACES=11 ./lulesh2.0 -s 20 -i 20 -k 10 -e 3
+
 //MPI
 //X10_PLACE_GROUP_RESTORE_MODE=1 FORCE_ONE_PLACE_PER_NODE=1 EXECUTOR_KILL_STEPS=5 EXECUTOR_KILL_PLACES=2 X10_NTHREADS=1 X10_RESILIENT_MODE=1 mpirun -np 9 -am ft-enable-mpi --mca errmgr_rts_hnp_proc_fail_xcast_delay 0 bin/lulesh2.0 -s 20 -i 20 -k 10 -e 1 -p
+//X10_PLACE_GROUP_RESTORE_MODE=1 FORCE_ONE_PLACE_PER_NODE=1 EXECUTOR_KILL_STEPS=2,12 EXECUTOR_KILL_PLACES=2,4 X10_NTHREADS=1 X10_RESILIENT_MODE=1 mpirun -np 10 -am ft-enable-mpi --mca errmgr_rts_hnp_proc_fail_xcast_delay 0 bin/lulesh2.0 -s 20 -i 20 -k 5 -e 2 -p
 
 
 
