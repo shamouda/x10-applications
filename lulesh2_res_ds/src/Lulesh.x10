@@ -301,8 +301,17 @@ public final class Lulesh implements LocalViewResilientIterativeAppDS {
         
     }
 
-    public def getCheckpointMap():HashMap[Any,Any] {
-    	return distDomain.getLocalCheckpointingState();
+    public def getCheckpointAndRestoreKeys():Rail[Any] {
+    	val i = places.indexOf(here);
+    	val rail = new Rail[Any](1);
+    	rail(0) = "D"+i;
+    	return rail;
+    }
+    
+    public def getCheckpointValues():Rail[Any] {
+    	val rail = new Rail[Any](1);
+    	rail(0) = new DomainSnapshot(distDomain.domainPlh());
+    	return rail;
     }
     
     public def remake(newPlaces:PlaceGroup, newTeam:Team, newAddedPlaces:ArrayList[Place]) {
