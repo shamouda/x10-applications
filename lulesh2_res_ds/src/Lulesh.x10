@@ -134,7 +134,7 @@ public final class Lulesh implements LocalViewResilientIterativeAppDS {
         }
 
         val team = new Team(places);
-        teamWarmup(team);
+        teamWarmup(team, places);
         new Lulesh(opts, placesPerSide, places, team).run(opts);
     }
 
@@ -2139,7 +2139,7 @@ endLoop(36); // fused loops 36-37
         elemZ(7) = domain.z(nd7i);
     }
     
-    public static def teamWarmup(team:Team){
+    public static def teamWarmup(team:Team, places:PlaceGroup){
     	val disableWarmup = System.getenv("DISABLE_TEAM_WARMUP");
     	if (disableWarmup != null && disableWarmup.equals("1"))
     	{
