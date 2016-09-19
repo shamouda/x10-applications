@@ -123,12 +123,14 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
             Console.OUT.printf("See help (-h) for more options\n\n");
         }
 
-        new Lulesh(opts, placesPerSide, places).run(opts);
+        val team = new Team(places);
+        teamWarmup(team);
+        new Lulesh(opts, placesPerSide, places, team).run(opts);
     }
 
-    public def this(opts:CommandLineOptions, placesPerSide:Int, places:PlaceGroup) {
+    public def this(opts:CommandLineOptions, placesPerSide:Int, places:PlaceGroup, team:Team) {
         this.places = places;
-        this.team = new Team(places);
+        this.team = team;
         this.opts = opts;
         val domainPlh = PlaceLocalHandle.make[Domain](places, 
             () => new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places));
@@ -195,7 +197,6 @@ public final class Lulesh implements LocalViewResilientIterativeAppOpt {
         val createReadOnlyStore = false;
         new LocalViewResilientExecutorOpt(opts.checkpointFreq, places, implicitBarrier, createReadOnlyStore).run(this, appStartTime);
 
-        Console.OUT.println("Finished, lets reduce elapsed time\n");
         finish for (place in places) at(place) async {
             val domain = distDomain.domainPlh();
             val elapsedTimeMillis = Timer.milliTime() - domain.startTimeMillis;
@@ -2119,6 +2120,67 @@ endLoop(36); // fused loops 36-37
         elemZ(6) = domain.z(nd6i);
         elemZ(7) = domain.z(nd7i);
     }
+    
+    public static def teamWarmup(team:Team){
+    	val disableWarmup = System.getenv("DISABLE_TEAM_WARMUP");
+    	if (disableWarmup != null && disableWarmup.equals("1"))
+    	{
+    		Console.OUT.println("Team warm up disabled ...");
+    		return;
+    	}
+    		
+    	val startWarmupTime = Timer.milliTime();
+    	Console.OUT.println("Starting team warm up ...");
+    	// warm up comms layer
+    	val root = Place(0);
+    	
+    	
+    	finish for (place in Place.places()) at (place) async {
+    		team.reduce(root, 1.0, Team.ADD);
+    		
+    		if (here.id == 0) Console.OUT.println(here+" reduce done ...");
+    	
+    		team.allreduce(1.0, Team.ADD);
+    		if (here.id == 0) Console.OUT.println(here+" allreduce done ...");
+    	
+    		team.barrier(); 
+    		if (here.id == 0) Console.OUT.println(here+" barrier done ...");
+    	
+    		var scounts:Rail[Int] = new Rail[Int](Place.numPlaces(),1n);
+    		val warmupInScatter = new Rail[Double](Place.numPlaces());
+    		var warmupOutScatter:Rail[Double] = new Rail[Double](1);
+    		team.scatter(root,warmupInScatter, 0, warmupOutScatter, 0, 1);
+    		if (here.id == 0) Console.OUT.println(here+" scatter done ...");
+        
+    		//team.scatterv(root, warmupInScatter, 0, warmupOutScatter, 0, scounts);
+    		//if (here.id == 0) Console.OUT.println(here+" scatterv done ...");
+    	
+    		val warmupInGather = new Rail[Double](1);
+    		var warmupOutGather:Rail[Double] = new Rail[Double](Place.numPlaces());
+    		team.gather(root,warmupInGather, 0, warmupOutGather, 0, 1);
+    		if (here.id == 0) Console.OUT.println(here+" gather done ...");
+        
+    		team.gatherv(root, warmupInGather, 0, warmupOutGather, 0, scounts);
+    		if (here.id == 0) Console.OUT.println(here+" gatherv done ...");
+        
+    		val warmupBcast = new Rail[Double](1);
+    		team.bcast(root, warmupBcast, 0, warmupBcast, 0, 1); 
+    		if (here.id == 0) Console.OUT.println(here+" bcast done ...");
+    		
+    		try{
+    			team.agree(1n);
+    			if (here.id == 0) Console.OUT.println(here+" agree done ...");
+    		}catch(ex:Exception){
+    			if (here.id == 0) {
+    				Console.OUT.println("agree failed ...");
+    				ex.printStackTrace();
+    			}
+    		}
+    		
+    	}
+        Console.OUT.println("Team warm up succeeded , time elapsed ["+(Timer.milliTime()-startWarmupTime)+"] ...");
+    }
+
 }
 // TODO Precision specification
 
