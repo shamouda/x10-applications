@@ -70,4 +70,6 @@ doc		: ${DOCSRC}
 
 .PHONY: clean
 clean:
-	rm -rf ${ManagedX10BIN} ${NativeX10BIN} ${BINDIR} ${DOCPATH} 
+	rm -rf ${ManagedX10BIN} ${NativeX10BIN} ${BINDIR} ${DOCPATH}
+	rm -rf ${SRC_FOLDERS}/../build
+	
