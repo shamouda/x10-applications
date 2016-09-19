@@ -2153,7 +2153,7 @@ endLoop(36); // fused loops 36-37
     	val root = Place(0);
     	
     	
-    	finish for (place in Place.places()) at (place) async {
+    	finish for (place in places) at (place) async {
     		team.reduce(root, 1.0, Team.ADD);
     		if (here.id == 0) Console.OUT.println(here+" reduce done ...");
     	
