@@ -26,6 +26,9 @@ import x10.util.resilient.iterative.PlaceGroupBuilder;
 import x10.regionarray.Dist;
 
 //DS_ALL_VERBOSE=1 EXECUTOR_DEBUG=1 X10_NTHREADS=2 FORCE_ONE_PLACE_PER_NODE=1 X10_NPLACES=8 X10_RESILIENT_MODE=1 ./lulesh2.0 -s 20 -i 10 -k 20 -p
+//test killing 3 places
+//FORCE_ONE_PLACE_PER_NODE=1 DISABLE_ULFM_AGREEMENT=1 EXECUTOR_KILL_STEPS=5,16 EXECUTOR_KILL_PLACES=2,5 X10_NTHREADS=1 X10_RESILIENT_MODE=1 X10_NPLACES=11 ./lulesh2.0 -s 20 -i 20 -k 10 -e 3
+
 
 
 /** 
@@ -2179,14 +2182,17 @@ endLoop(36); // fused loops 36-37
     		team.bcast(root, warmupBcast, 0, warmupBcast, 0, 1); 
     		if (here.id == 0) Console.OUT.println(here+" bcast done ...");
     		
-    		try{
-    			team.agree(1n);
-    			if (here.id == 0) Console.OUT.println(here+" agree done ...");
-    		}catch(ex:Exception){
-    			if (here.id == 0) {
-    				Console.OUT.println("agree failed ...");
-    				ex.printStackTrace();
-    			}
+    		val DISABLE_ULFM_AGREEMENT = System.getenv("DISABLE_ULFM_AGREEMENT") != null && System.getenv("DISABLE_ULFM_AGREEMENT").equals("1");
+    		if (!DISABLE_ULFM_AGREEMENT) {   
+	    		try{
+	    			team.agree(1n);
+	    			if (here.id == 0) Console.OUT.println(here+" agree done ...");
+	    		}catch(ex:Exception){
+	    			if (here.id == 0) {
+	    				Console.OUT.println("agree failed ...");
+	    				ex.printStackTrace();
+	    			}
+	    		}
     		}
     		
     	}

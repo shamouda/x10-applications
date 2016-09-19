@@ -2167,14 +2167,17 @@ endLoop(36); // fused loops 36-37
     		team.bcast(root, warmupBcast, 0, warmupBcast, 0, 1); 
     		if (here.id == 0) Console.OUT.println(here+" bcast done ...");
     		
-    		try{
-    			team.agree(1n);
-    			if (here.id == 0) Console.OUT.println(here+" agree done ...");
-    		}catch(ex:Exception){
-    			if (here.id == 0) {
-    				Console.OUT.println("agree failed ...");
-    				ex.printStackTrace();
-    			}
+    		val DISABLE_ULFM_AGREEMENT = System.getenv("DISABLE_ULFM_AGREEMENT") != null && System.getenv("DISABLE_ULFM_AGREEMENT").equals("1");
+    		if (!DISABLE_ULFM_AGREEMENT) {   
+	    		try{
+	    			team.agree(1n);
+	    			if (here.id == 0) Console.OUT.println(here+" agree done ...");
+	    		}catch(ex:Exception){
+	    			if (here.id == 0) {
+	    				Console.OUT.println("agree failed ...");
+	    				ex.printStackTrace();
+	    			}
+	    		}
     		}
     		
     	}
