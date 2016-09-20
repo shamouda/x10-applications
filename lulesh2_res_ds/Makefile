@@ -27,6 +27,11 @@ ifdef RECORD_LOOP_TIMES
   X10FLAG += -define __RECORD_LOOP_TIMES__
 endif
 
+DS_DEBUG ?=
+ifdef DS_DEBUG
+  X10FLAG += -define __DS_DEBUG__
+endif
+
 BINDIR = bin
 ManagedX10BIN = ${BINDIR}/Lulesh2.0.jar
 NativeX10BIN = ${BINDIR}/lulesh2.0
