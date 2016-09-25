@@ -23,6 +23,7 @@ import x10.util.resilient.iterative.DistObjectSnapshot;
 import x10.util.resilient.localstore.SPMDResilientIterativeExecutor;
 import x10.util.resilient.localstore.SPMDResilientIterativeApp;
 import x10.util.resilient.localstore.SPMDResilientMap;
+import x10.util.resilient.localstore.Cloneable;
 import x10.util.resilient.iterative.PlaceGroupBuilder;
 import x10.regionarray.Dist;
 
@@ -321,8 +322,8 @@ public final class Lulesh implements SPMDResilientIterativeApp {
     	return rail;
     }
     
-    public def getCheckpointValues():Rail[Any] {
-    	val rail = new Rail[Any](1);
+    public def getCheckpointValues():Rail[Cloneable] {
+    	val rail = new Rail[Cloneable](1);
     	rail(0) = new DomainSnapshot(distDomain.domainPlh());
     	return rail;
     }
@@ -345,7 +346,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
     }
     
     
-    public def restore(restoreDataMap:HashMap[String,Any], lastCheckpointIter:Long) {
+    public def restore(restoreDataMap:HashMap[String,Cloneable], lastCheckpointIter:Long) {
     	if (VERBOSE) Console.OUT.println("["+here+"] Data restore started ...");
         val storedDomain = restoreDataMap.get("D") as DomainSnapshot;
         storedDomain.populateDomain(distDomain.domainPlh());

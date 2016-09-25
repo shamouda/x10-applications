@@ -9,10 +9,10 @@
  *  (C) Copyright IBM Corporation 2015.
  */
 
-import x10.util.resilient.iterative.Snapshot;
+import x10.util.resilient.localstore.Cloneable;
 import x10.util.HashMap;
 
-class DomainSnapshot implements Snapshot {
+class DomainSnapshot implements Cloneable {
     private var data:Rail[Double];
     
     public def this(domain:Domain) {
@@ -51,7 +51,7 @@ class DomainSnapshot implements Snapshot {
         this.data = allDate;
     }
 
-    public def clone():Any {
+    public def clone():Cloneable {
         return new DomainSnapshot(new Rail[Double](data));
     }
        
