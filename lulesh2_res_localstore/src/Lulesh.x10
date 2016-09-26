@@ -22,7 +22,7 @@ import x10.util.HashMap;
 import x10.util.resilient.iterative.DistObjectSnapshot;
 import x10.util.resilient.localstore.SPMDResilientIterativeExecutor;
 import x10.util.resilient.localstore.SPMDResilientIterativeApp;
-import x10.util.resilient.localstore.SPMDResilientMap;
+import x10.util.resilient.localstore.ResilientStore;
 import x10.util.resilient.localstore.Cloneable;
 import x10.util.resilient.iterative.PlaceGroupBuilder;
 import x10.regionarray.Dist;
@@ -104,7 +104,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
 
     public var places:PlaceGroup;
     public var team:Team;
-    public val resilientMap:SPMDResilientMap;
+    public val resilientMap:ResilientStore;
     public val opts:CommandLineOptions;
     
     public static def main(args:Rail[String]) {
@@ -114,7 +114,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             return;
         }
         
-        val resilientMap = SPMDResilientMap.make(opts.spare);
+        val resilientMap = ResilientStore.make(opts.spare);
         val places = resilientMap.getActivePlaces();
         val numPlaces = places.size();
         
@@ -145,7 +145,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         new Lulesh(opts, placesPerSide, places, team, resilientMap).run(opts);
     }
 
-    public def this(opts:CommandLineOptions, placesPerSide:Int, places:PlaceGroup, team:Team, resilientMap:SPMDResilientMap) {
+    public def this(opts:CommandLineOptions, placesPerSide:Int, places:PlaceGroup, team:Team, resilientMap:ResilientStore) {
         this.places = places;
         this.team = team;
         this.opts = opts;
