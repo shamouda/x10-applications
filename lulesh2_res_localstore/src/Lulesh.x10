@@ -20,6 +20,7 @@ import x10.util.Timer;
 import x10.util.ArrayList;
 import x10.util.HashMap;
 import x10.util.resilient.iterative.DistObjectSnapshot;
+import x10.util.resilient.localstore.SPMDResilientIterativeExecutorULFM;
 import x10.util.resilient.localstore.SPMDResilientIterativeExecutor;
 import x10.util.resilient.localstore.SPMDResilientIterativeApp;
 import x10.util.resilient.localstore.ResilientStore;
@@ -212,7 +213,13 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         initGhostManagers();
         val implicitBarrier = true;
         val createReadOnlyStore = false;
-        new SPMDResilientIterativeExecutor(opts.checkpointFreq, resilientMap, implicitBarrier).run(this, appStartTime);
+        
+        if (x10.xrx.Runtime.x10rtAgreementSupport()){
+            new SPMDResilientIterativeExecutorULFM(opts.checkpointFreq, resilientMap, implicitBarrier).run(this, appStartTime);
+        }
+        else {
+            new SPMDResilientIterativeExecutor(opts.checkpointFreq, resilientMap, implicitBarrier).run(this, appStartTime);
+        }
 
         finish for (place in places) at(place) async {
             val domain = distDomain.domainPlh();
