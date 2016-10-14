@@ -73,7 +73,9 @@ public final class Lulesh implements SPMDResilientIterativeApp {
     static PRINT_COMM_TIME = System.getenv("LULESH_PRINT_COMM_TIME") != null;
     static SYNCH_GHOST_EXCHANGE = System.getenv("LULESH_SYNCH_GHOSTS") != null;
     static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
-
+    static val DISABLE_ULFM_AGREEMENT = System.getenv("DISABLE_ULFM_AGREEMENT") != null && System.getenv("DISABLE_ULFM_AGREEMENT").equals("1");
+    
+    
     /** The simulation domain at each place. */
     protected val distDomain:DistDomain;
     //protected val domainPlh:PlaceLocalHandle[Domain];
@@ -214,7 +216,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         val implicitBarrier = true;
         val createReadOnlyStore = false;
         
-        if (x10.xrx.Runtime.x10rtAgreementSupport()){
+        if (x10.xrx.Runtime.x10rtAgreementSupport() && !DISABLE_ULFM_AGREEMENT){
             new SPMDResilientIterativeExecutorULFM(opts.checkpointFreq, resilientMap, implicitBarrier).run(this, appStartTime);
         }
         else {
