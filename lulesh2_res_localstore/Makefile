@@ -4,9 +4,10 @@
 # SEDOV_SYNC_POS_VEL_LATE
 SYNCFLAG = -define SEDOV_SYNC_POS_VEL_EARLY
 
+#SRC_FOLDERS=../../DS2016_localstore/src
 SRC_FOLDERS=../../x10-resilient-store/src
 
-X10FLAG = -sourcepath ${SRC_FOLDERS} -v -J-Xmx1G -J-Xms512M -O3 -VERBOSE_CHECKS -O -NO_CHECKS -g -report postcompile=1 ${SYNCFLAG}
+X10FLAG = -sourcepath ${SRC_FOLDERS} -v -J-Xmx2G -J-Xms1G -O3 -VERBOSE_CHECKS -O -NO_CHECKS -g -report postcompile=1 ${SYNCFLAG}
 ifdef NO_CHECKS
     X10FLAG += -NO_CHECKS
 endif
