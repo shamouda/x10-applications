@@ -55,7 +55,7 @@ class DomainSnapshot implements Cloneable {
         return new DomainSnapshot(new Rail[Double](data));
     }
        
-    public def populateDomain(domain:Domain){      
+    public def populateDomain(domain:Domain){
         var srcOff:Long = 0;   
         val numNode = data(srcOff++) as Long;
         val numElem = data(srcOff++) as Long;
@@ -81,30 +81,6 @@ class DomainSnapshot implements Cloneable {
         Rail.copy(data, srcOff, domain.ql, 0, numElem); srcOff += numElem;
         Rail.copy(data, srcOff, domain.qq, 0, numElem); srcOff += numElem;
         Rail.copy(data, srcOff, domain.v , 0, numElem);
-    }
-
-
-    public final def remoteCopyAndSave(key:Any, hm:PlaceLocalHandle[HashMap[Any,Any]], backupPlace:Place) {
-        val srcbuf = new GlobalRail[Double](data);
-        val srcbufCnt = data.size;
-        at(backupPlace) {
-            val dstbuf = new Rail[Double](srcbufCnt);
-            finish Rail.asyncCopy[Double](srcbuf, 0, dstbuf, 0, srcbufCnt);
-            atomic hm().put(key, new DomainSnapshot(dstbuf));
-        }
-    }
-    
-
-    public final def remoteClone(targetPlace:Place):GlobalRef[Any]{self.home==targetPlace} {
-        val srcbuf = new GlobalRail[Double](data);
-        val srcbufCnt = data.size;
-        val resultGR = at(targetPlace) {
-            val dstbuf = new Rail[Double](srcbufCnt);
-            finish Rail.asyncCopy[Double](srcbuf, 0, dstbuf, 0, srcbufCnt);
-            val gr = new GlobalRef[Any](new DomainSnapshot(dstbuf));
-            gr
-        };
-        return resultGR;
     }
 }
 // vim:tabstop=4:shiftwidth=4:expandtab

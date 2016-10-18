@@ -28,17 +28,6 @@ import x10.util.resilient.localstore.Cloneable;
 import x10.util.resilient.iterative.PlaceGroupBuilder;
 import x10.regionarray.Dist;
 
-//DS_ALL_VERBOSE=1 EXECUTOR_DEBUG=1 X10_NTHREADS=2 FORCE_ONE_PLACE_PER_NODE=1 X10_NPLACES=8 X10_RESILIENT_MODE=1 ./lulesh2.0 -s 20 -i 10 -k 20 -p
-//
-//Socket (test killing 3 places) 
-//X10_PLACE_GROUP_RESTORE_MODE=1 FORCE_ONE_PLACE_PER_NODE=1 DISABLE_ULFM_AGREEMENT=1 EXECUTOR_KILL_STEPS=5,16 EXECUTOR_KILL_PLACES=2,5 X10_NTHREADS=1 X10_RESILIENT_MODE=1 X10_NPLACES=11 ./lulesh2.0 -s 20 -i 20 -k 10 -e 3
-
-//MPI
-//X10_PLACE_GROUP_RESTORE_MODE=1 FORCE_ONE_PLACE_PER_NODE=1 EXECUTOR_KILL_STEPS=5 EXECUTOR_KILL_PLACES=2 X10_NTHREADS=1 X10_RESILIENT_MODE=1 mpirun -np 9 -am ft-enable-mpi --mca errmgr_rts_hnp_proc_fail_xcast_delay 0 bin/lulesh2.0 -s 20 -i 20 -k 10 -e 1 -p
-
-//X10_NUM_IMMEDIATE_THREADS=2 X10RT_MPI_DEBUG_PRINT=1 X10_PLACE_GROUP_RESTORE_MODE=1 FORCE_ONE_PLACE_PER_NODE=1 EXECUTOR_KILL_STEPS=2,12 EXECUTOR_KILL_PLACES=2,4 X10_NTHREADS=1 X10_RESILIENT_MODE=1 mpirun -np 10 -am ft-enable-mpi --mca errmgr_rts_hnp_proc_fail_xcast_delay 0 bin/lulesh2.0 -s 20 -i 20 -k 5 -e 2 -p
-
-
 
 /** 
  * X10 implementation of the LULESH proxy app, based on LULESH version 2.0.3.
@@ -214,7 +203,6 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         val appStartTime = Timer.milliTime();
         initGhostManagers();
         val implicitBarrier = true;
-        val createReadOnlyStore = false;
         
         if (x10.xrx.Runtime.x10rtAgreementSupport() && !DISABLE_ULFM_AGREEMENT){
             new SPMDResilientIterativeExecutorULFM(opts.checkpointFreq, resilientMap, implicitBarrier).run(this, appStartTime);
@@ -322,19 +310,12 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             Console.OUT.printf("cycle = %d, time = %e, dt=%e\n",
                 domain.cycle, domain.time, domain.deltatime);
         }
-        
     }
 
-    public def getCheckpointAndRestoreKeys():Rail[String] {
-    	val rail = new Rail[String](1);
-    	rail(0) = "D";
-    	return rail;
-    }
-    
-    public def getCheckpointValues():Rail[Cloneable] {
-    	val rail = new Rail[Cloneable](1);
-    	rail(0) = new DomainSnapshot(distDomain.domainPlh());
-    	return rail;
+    public def getCheckpointData():HashMap[String,Cloneable] {
+    	val map = new HashMap[String,Cloneable]();
+    	map.put("D", new DomainSnapshot(distDomain.domainPlh()));    	
+    	return map;
     }
     
     public def remake(newPlaces:PlaceGroup, newTeam:Team, newAddedPlaces:ArrayList[Place]) {
