@@ -9,12 +9,6 @@
  *  (C) Copyright IBM Corporation 2015.
  */
 
-import x10.util.resilient.iterative.Snapshottable;
-import x10.util.resilient.iterative.DistObjectSnapshot;
-import x10.regionarray.Dist;
-import x10.util.resilient.map.*;
-import x10.util.HashMap;
-
 class DistDomain {
     static VERBOSE = System.getenv("LULESH_VERBOSE") != null;
     public var domainPlh:PlaceLocalHandle[Domain];
