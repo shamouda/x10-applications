@@ -104,8 +104,20 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             return;
         }
         
-        val resilientMap = ResilientStore.make(opts.spare);
-        val places = resilientMap.getActivePlaces();
+        
+        val startTime = Timer.milliTime();
+        var resilientStore:ResilientStore = null;
+        var placesVar:PlaceGroup = Place.places();
+        var team:Team = Team.WORLD;
+        if (x10.xrx.Runtime.RESILIENT_MODE > 0 && opts.checkpointFreq > 0) {
+        	if (opts.diskStorage)
+        		resilientStore = ResilientStore.makeDisk();
+        	else
+        		resilientStore = ResilientStore.make(opts.spare);
+            placesVar = resilientStore.getActivePlaces();
+            team = new Team(placesVar);
+        }
+        val places = placesVar;
         val numPlaces = places.size();
         
         val placesPerSide = Math.cbrt((numPlaces as Double) + 0.5) as Int;
@@ -130,9 +142,12 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             Console.OUT.printf("See help (-h) for more options\n\n");
         }
 
-        val team = new Team(places);
+        val startWarmupTime = Timer.milliTime();
         teamWarmup(team, places);
-        new Lulesh(opts, placesPerSide, places, team, resilientMap).run(opts);
+        val warmupTime = Timer.milliTime() - startWarmupTime;
+        
+        val startTimeWithoutWarmup = startTime + warmupTime;
+        new Lulesh(opts, placesPerSide, places, team, resilientStore).run(opts, startTimeWithoutWarmup);
     }
 
     public def this(opts:CommandLineOptions, placesPerSide:Int, places:PlaceGroup, team:Team, resilientMap:ResilientStore) {
@@ -197,8 +212,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         }
     }
     
-    public def run(opts:CommandLineOptions) {
-        val appStartTime = Timer.milliTime();
+    public def run(opts:CommandLineOptions, appStartTime:Long) {
         initGhostManagers();
         val implicitBarrier = true;
         

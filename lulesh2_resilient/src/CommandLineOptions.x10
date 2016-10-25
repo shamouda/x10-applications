@@ -25,7 +25,7 @@ public class CommandLineOptions {
     var spare:Long = 0;           // -e
     var ignorePlace:Long = -1;    // -y  for testing only
     var checkpointFreq:Long = -1; // -k
-    
+    var diskStorage:Boolean = false; // -disk
 
     /** Parse command line options for LULESH. */
     public static def parse(args:Rail[String]):CommandLineOptions {
@@ -52,6 +52,8 @@ public class CommandLineOptions {
                 opts.spare = parseIntValue(args, i++, "spare places");
             } else if (args(i).equals("-k")) {
                 opts.checkpointFreq = parseIntValue(args, i++, "checkpoint frequency");
+            } else if (args(i).equals("-disk")) {
+                opts.diskStorage = (parseIntValue(args, i++, "disk") == 1n);
             } else if (args(i).equals("-v")) {
                 opts.viz = true;
             } else if (args(i).equals("-p")) {
@@ -96,7 +98,10 @@ public class CommandLineOptions {
         Console.OUT.printf(" -c <cost>       : Extra cost of more expensive regions (def: 1)\n");
         Console.OUT.printf(" -f <numfiles>   : Number of files to split viz dump into (def: (np+10)/9)\n");
         Console.OUT.printf(" -p              : Print out progress\n");
-        Console.OUT.printf(" -v              : Output viz file (requires compiling with -DVIZ_MESH\n");
+        Console.OUT.printf(" -e              : Number of spare places\n");
+        Console.OUT.printf(" -k              : Checkpoint interval\n");
+        Console.OUT.printf(" -disk           : Checkpoint on disk (1 or 0) default 0 (checkpoint on memory)\n");
+        Console.OUT.printf(" -v              : Output viz file (requires compiling with -DVIZ_MESH\n");        
         Console.OUT.printf(" -h              : This message\n");
         Console.OUT.printf("\n");
     }
