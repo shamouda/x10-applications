@@ -86,9 +86,9 @@ public final class Domain {
     /** volume change time constraint */
     public var dthydro:Double;
     /** variable time increment lower bound */
-    public var deltatimemultlb:Double;
+    public val deltatimemultlb:Double;
     /** variable time increment upper bound */
-    public var deltatimemultub:Double;
+    public val deltatimemultub:Double;
 
     /** iteration count for simulation */
     public var cycle:Int;
@@ -951,6 +951,88 @@ public final class Domain {
     @Native("c++",  "::rand()")
     private def rand():Int {
         return rand.nextInt();
+    }
+    
+    public def toString() {
+       return "\ndtcourant:"+    dtcourant +
+    		   "\ndthydro:"+    dthydro +
+    		   "\ncycle:"+    cycle +
+    		   "\ntime:"+    time +
+    		   "\ndeltatime:"+    deltatime +
+    		   "\nstartTimeMillis:"+    startTimeMillis +
+    		   "\nelapsedTimeMillis:"+    elapsedTimeMillis +
+    		   "\nallreduceTime:"+    allreduceTime +
+    		   "\nx:"+    railToString(x) +
+    		   "\ny:"+    railToString(y) + 
+    		   "\nz:"+    railToString(z) + 
+    		   "\nxd:"+    railToString(xd) + 
+    		   "\nyd:"+    railToString(yd) + 
+    		   "\nzd:"+    railToString(zd) + 
+    		   "\nxdd:"+    railToString(xdd) + 
+    		   "\nydd:"+    railToString(ydd) + 
+    		   "\nzdd:"+    railToString(zdd) + 
+    		   "\nfx:"+    railToString(fx) + 
+    		   "\nfy:"+    railToString(fy) + 
+    		   "\nfz:"+    railToString(fz) + 
+    		   "\nnodalMass:"+    railToString(nodalMass) + 
+    		   "\nsymmX:"+    railToString(symmX) + 
+    		   "\nsymmY:"+    railToString(symmY) + 
+    		   "\nsymmZ:"+    railToString(symmZ) + 
+    		   "\ne:"+    railToString(e) + 
+    		   "\np:"+    railToString(p) + 
+    		   "\nq:"+    railToString(q) + 
+    		   "\nql:"+    railToString(ql) + 
+    		   "\nqq:"+    railToString(qq) + 
+    		   "\nvolo:"+    railToString(volo) + 
+    		   "\nv:"+    railToString(v) + 
+    		   "\ndelv:"+    railToString(delv) + 
+    		   "\nvdov:"+    railToString(vdov) + 
+    		   "\narealg:"+    railToString(arealg) + 
+    		   "\nss:"+    railToString(ss) + 
+    		   "\nelemMass:"+    railToString(elemMass) + 
+    		   "\nnodeElemStart:"+    railToString(nodeElemStart) + 
+    		   "\nnodeElemCornerList:"+    railToString(nodeElemCornerList) + 
+    		   "\nregNumList:"+    railToString(regNumList) + 
+    		   "\nregElemList:"+    railOfRailToString(regElemList) +
+    		   "\nnodeList:"+    railToString(nodeList) + 
+    		   "\nlxim:"+    railToString(lxim) + 
+    		   "\nlxip:"+    railToString(lxip) + 
+    		   "\nletam:"+    railToString(letam) + 
+    		   "\nletap:"+    railToString(letap) + 
+    		   "\nlzetam:"+    railToString(lzetam) + 
+    		   "\nlzetap:"+    railToString(lzetap) + 
+    		   "\nelemBC:"+    railToString(elemBC) + 
+    		   "\ndxx:"+    railToString(dxx) + 
+    		   "\ndyy:"+    railToString(dyy) + 
+    		   "\ndzz:"+    railToString(dzz) + 
+    		   "\ndelv_xi:"+    railToString(delv_xi) + 
+    		   "\ndelv_eta:"+    railToString(delv_eta) + 
+    		   "\ndelv_zeta:"+    railToString(delv_zeta) + 
+    		   "\ndelx_xi:"+    railToString(delx_xi) + 
+    		   "\ndelx_eta:"+    railToString(delx_eta) + 
+    		   "\ndelx_zeta:"+    railToString(delx_zeta);
+    }
+    
+    private def railToString[T](r:Rail[T]):String {
+        if (r == null)
+            return "";
+        var str:String = "";
+        for (x in r)
+            str += x + ",";
+        return str;
+    }
+    private def railOfRailToString(r:Rail[Rail[Long]]) {
+    	if (r == null)
+            return "";
+    	var str:String = "";
+    	for (x in r) {
+            str += "{";
+            for (m in x) {
+            	str += m + " ";
+            }
+            str += "}\n";
+    	}
+    	return str;
     }
 }
 // vim:tabstop=4:shiftwidth=4:expandtab

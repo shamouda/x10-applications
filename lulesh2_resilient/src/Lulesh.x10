@@ -282,7 +282,9 @@ public final class Lulesh implements SPMDResilientIterativeApp {
 
     public def getCheckpointData_local():HashMap[String,Cloneable] {
     	val map = new HashMap[String,Cloneable]();
-    	map.put("D", new DomainSnapshot(domainPlh()));    	
+    	map.put("D", new DomainSnapshot(domainPlh()));
+    	if (here.id == 0)
+    		Console.OUT.println("ckpt:"+here+domainPlh().toString());
     	return map;
     }
     
@@ -310,6 +312,8 @@ public final class Lulesh implements SPMDResilientIterativeApp {
     
     public def restore_local(restoreDataMap:HashMap[String,Cloneable], lastCheckpointIter:Long) {
         (restoreDataMap.get("D") as DomainSnapshot).populateDomain(domainPlh());
+        if (here.id == 0)
+    		Console.OUT.println("restore:"+here+domainPlh().toString());
     }  
 
     /**
