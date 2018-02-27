@@ -383,7 +383,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             domain.deltatime = newDt;
         } else {
             // TODO: without this barrier, fixed timestep can deadlock - why?
-            //NO_COLL team.barrier();
+            team.barrier();
         }
 
         /* TRY TO PREVENT VERY SMALL SCALING ON THE NEXT CYCLE */
