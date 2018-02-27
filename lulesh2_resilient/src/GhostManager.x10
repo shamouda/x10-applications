@@ -19,6 +19,8 @@ import x10.util.Timer;
 /** Manages updates of ghost data for LULESH. */
 public final class GhostManager {
     private static val HIDE_GHOST:Long = System.getenv("HIDE_GHOST") == null ? 0 : Long.parseLong(System.getenv("HIDE_GHOST"));
+    private static val HIDE_COLL:Boolean = System.getenv("HIDE_COLL") == null ? false : Long.parseLong(System.getenv("HIDE_COLL")) == 1;
+    
     //0  don't hide anything
     //1  slow ghost
     //2  no ghost
@@ -359,7 +361,7 @@ public final class GhostManager {
             // (b) wait for everyone else to have packed their data
             val t2 = Timer.nanoTime();
             ls.processTime += (t2 - t1);
-            //NO_COLL team.barrier();
+            if (!HIDE_COLL) team.barrier();
             val t3 = Timer.nanoTime();
             ls.waitTime += (t3 - t2);
     
@@ -455,7 +457,7 @@ public final class GhostManager {
             // (b) wait for everyone else to have packed their data
             val t2 = Timer.nanoTime();
             ls.processTime += (t2 - t1);
-            //NO_COLL team.barrier();
+            if (!HIDE_COLL) team.barrier();
             val t3 = Timer.nanoTime();
             ls.waitTime += (t3 - t2);
     
@@ -560,7 +562,7 @@ public final class GhostManager {
             // (b) wait for everyone else to have packed their data
             val t2 = Timer.nanoTime();
             ls.processTime += (t2 - t1);
-            //NO_COLL team.barrier();
+            if (!HIDE_COLL) team.barrier();
             val t3 = Timer.nanoTime();
             ls.waitTime += (t3 - t2);
     

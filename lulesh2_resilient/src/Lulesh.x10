@@ -55,7 +55,10 @@ import x10.util.resilient.PlaceManager.ChangeDescription;
 public final class Lulesh implements SPMDResilientIterativeApp {
     static PRINT_COMM_TIME = System.getenv("LULESH_PRINT_COMM_TIME") != null;
     static SYNCH_GHOST_EXCHANGE = System.getenv("LULESH_SYNCH_GHOSTS") != null;
-
+    static val HIDE_COLL:Boolean = System.getenv("HIDE_COLL") == null ? false : Long.parseLong(System.getenv("HIDE_COLL")) == 1;
+    //0 don't hide
+    //1 hide all collectives except the first barrier (because without it, the program hangs)
+    
     /** The simulation domain at each place. */
     protected val domainPlh:PlaceLocalHandle[Domain];
 
@@ -188,7 +191,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         finish for (place in places) at(place) async {
             val domain = domainPlh();
             val elapsedTimeMillis = Timer.milliTime() - domain.startTimeMillis;
-            //NO_COLL domain.elapsedTimeMillis = team.allreduce(elapsedTimeMillis, Team.MAX);
+            if (!HIDE_COLL) domain.elapsedTimeMillis = team.allreduce(elapsedTimeMillis, Team.MAX);
         }
 
         val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
@@ -265,7 +268,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
                 massGhostMgr.waitAndCombineBoundaries();
             }
 
-            //NO_COLL team.barrier();
+            if (!HIDE_COLL) team.barrier();
 	        
 	        if (domain.startTimeMillis == 0) //to avoid resetting the start time after rollback
                 domain.startTimeMillis = Timer.milliTime();
@@ -337,8 +340,12 @@ public final class Lulesh implements SPMDResilientIterativeApp {
                 rep = 10n * (1n + domain.cost);
             repTimesNumElem += rep * domain.regElemList(r).size;
         }
-        val maxLoad = 100n; //NO_COLL team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
-        val totalLoad = 100n; //NO_COLL team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
+        var maxLoad:Int = 100n; //NO_COLL team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
+        if (!HIDE_COLL) 
+            maxLoad = team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
+        var totalLoad:Int = 100n; //NO_COLL team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
+        if (!HIDE_COLL)
+            totalLoad = team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
         if (here.equals(Place.FIRST_PLACE)) {
             val meanLoad = totalLoad/places.size();
             Console.OUT.printf("region load max %d average %d imbalance %f\n", maxLoad, meanLoad, (maxLoad*1.0/meanLoad)-1.0);
@@ -366,6 +373,8 @@ public final class Lulesh implements SPMDResilientIterativeApp {
 
             val start = Timer.milliTime();
             newDt = oldDt; //NO_COLL team.allreduce(gNewDt, Team.MIN);
+            if (!HIDE_COLL)
+                newDt = team.allreduce(gNewDt, Team.MIN);    
             domain.allreduceTime += Timer.milliTime() - start;
 
             ratio = newDt / oldDt;
@@ -510,7 +519,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
 startLoop(4);
             Foreach.block(0, numElem-1, (k:Long)=> {
                 if (determ(k) <= 0.0) {
-                    //NO_COLL throw new VolumeException(k, determ(k));
+                    if (!HIDE_COLL) throw new VolumeException(k, determ(k));
                 }
             });
 endLoop(4);
@@ -788,7 +797,7 @@ startLoop(5);
 
                 /* Do a check for negative volumes */
                 if (domain.v(i) <= 0.0) {
-                    //NO_COLL throw new VolumeException(i, domain.v(i));
+                    if (!HIDE_COLL) throw new VolumeException(i, domain.v(i));
                 }
             }
         } );
@@ -1156,7 +1165,7 @@ startLoop(15);
 
                 // See if any volumes are negative, and take appropriate action.
                 if (vnew(k) <= 0.0)  {
-                  //NO_COLL throw new VolumeException(k, vnew(k));
+                    if (!HIDE_COLL) throw new VolumeException(k, vnew(k));
                 }
             } );
 endLoop(15);
@@ -1672,7 +1681,7 @@ startLoop(18);
                     if (vc > eosvmax) vc = eosvmax;
                 }
                 if (vc <= 0.0) {
-                  //NO_COLL throw new VolumeException(i, vc);
+                    if (!HIDE_COLL) throw new VolumeException(i, vc);
                 }
             });
 endLoop(18); // fused loops 18-20
