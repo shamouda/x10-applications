@@ -18,6 +18,11 @@ import x10.util.Timer;
 
 /** Manages updates of ghost data for LULESH. */
 public final class GhostManager {
+    private static val HIDE_GHOST:Long = System.getenv("HIDE_GHOST") == null ? 0 : Long.parseLong(System.getenv("HIDE_GHOST"));
+    //0  don't hide anything
+    //1  slow ghost
+    //2  no ghost
+    
     // LocalState is Unserializable to catch programming errors;
     // instances of this class should never be sent across Places.
     static class LocalState implements x10.io.Unserializable {
@@ -337,7 +342,8 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeAndCombineBoundaryData() {
-        //*NO_GHOST
+        if (HIDE_GHOST == 2)
+            return;
         try {
             if (singlePlace) return;
             val t1 = Timer.nanoTime();
@@ -358,11 +364,20 @@ public final class GhostManager {
             ls.waitTime += (t3 - t2);
     
             // (c) get the packed data from my neighbors
-            {
+            if (HIDE_GHOST == 0) {
+                finish {
+                    for (i in ls.neighborListRecv.range) {
+                    	if (ls.remoteSendBuffers(i).home().isDead())
+                    		throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
+                    	Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+                    }
+                }
+            }
+            else {
                 for (i in ls.neighborListRecv.range) {
-                	if (ls.remoteSendBuffers(i).home().isDead())
-                		throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
-                	finish Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+                    if (ls.remoteSendBuffers(i).home().isDead())
+                        throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
+                    finish Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
                 }
             }
             val t4 = Timer.nanoTime();
@@ -424,7 +439,8 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeBoundaryData() {
-        //*NO_GHOST
+        if (HIDE_GHOST == 2)
+            return;
         try {
             if (singlePlace) return;
             val t1 = Timer.nanoTime();
@@ -444,11 +460,20 @@ public final class GhostManager {
             ls.waitTime += (t3 - t2);
     
             // (c) get the packed data from my neighbors
-            {
+            if (HIDE_GHOST == 0) {
+                finish {
+                    for (i in ls.neighborListRecv.range) {
+                    	if (ls.remoteSendBuffers(i).home().isDead())
+                    		throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
+                    	Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+                    }
+                }
+            }
+            else {
                 for (i in ls.neighborListRecv.range) {
-                	if (ls.remoteSendBuffers(i).home().isDead())
-                		throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
-                	finish Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+                    if (ls.remoteSendBuffers(i).home().isDead())
+                        throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
+                    finish Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
                 }
             }
             val t4 = Timer.nanoTime();
@@ -519,7 +544,8 @@ public final class GhostManager {
      * sendBuffers).
      */
     public final def exchangePlaneGhosts() {
-        //*NO_GHOST
+        if (HIDE_GHOST == 2)
+            return;
         try {
             if (singlePlace) return;
             val t1 = Timer.nanoTime();
@@ -539,11 +565,19 @@ public final class GhostManager {
             ls.waitTime += (t3 - t2);
     
             // (c) get the packed data from my neighbors
-            {
+            if (HIDE_GHOST == 0) {
+                finish {
+                    for (i in ls.neighborListRecv.range) {
+                    	if (ls.remoteSendBuffers(i).home().isDead())
+                    		throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
+                    	Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+                    }
+                }
+            } else {
                 for (i in ls.neighborListRecv.range) {
-                	if (ls.remoteSendBuffers(i).home().isDead())
-                		throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
-                	finish Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
+                    if (ls.remoteSendBuffers(i).home().isDead())
+                        throw new DeadPlaceException(ls.remoteSendBuffers(i).home(), "Source place["+ls.remoteSendBuffers(i).home()+"] died before asyncCopy operation");
+                    finish Rail.asyncCopy(ls.remoteSendBuffers(i), 0, ls.recvBuffers(i), 0, ls.recvBuffers(i).size);
                 }
             }
             val t4 = Timer.nanoTime();
@@ -578,6 +612,7 @@ public final class GhostManager {
             } //else NOOP, let next collective catch it
         }
     }
+    
     public def destroyLocalState(){
         PlaceLocalHandle.destroy(places, localState, (Place)=>true);
     }
