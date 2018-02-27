@@ -337,6 +337,7 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeAndCombineBoundaryData() {
+        /*NO_GHOST
         try {
             if (singlePlace) return;
             val t1 = Timer.nanoTime();
@@ -374,7 +375,7 @@ public final class GhostManager {
             ls.processTime += (Timer.nanoTime() - t4);
         } catch (e:Exception) {
             checkException(e);
-        }
+        }*/
     }
 
    /**
@@ -423,6 +424,7 @@ public final class GhostManager {
      * updating the sendBuffers).
      */
     public final def exchangeBoundaryData() {
+        /*NO_GHOST
         try {
             if (singlePlace) return;
             val t1 = Timer.nanoTime();
@@ -459,7 +461,7 @@ public final class GhostManager {
             ls.processTime += (Timer.nanoTime() - t4);
         } catch (e:Exception) {
             checkException(e);
-        }
+        }*/
     }
 
 
@@ -517,6 +519,7 @@ public final class GhostManager {
      * sendBuffers).
      */
     public final def exchangePlaneGhosts() {
+        /*NO_GHOST
         try {
             if (singlePlace) return;
             val t1 = Timer.nanoTime();
@@ -557,7 +560,7 @@ public final class GhostManager {
             ls.processTime += (Timer.nanoTime() - t4);
         } catch (e:Exception) {
             checkException(e);
-        }
+        }*/
     }
     
     private def checkException(ex:Exception) {
