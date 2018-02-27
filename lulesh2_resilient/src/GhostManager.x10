@@ -359,7 +359,7 @@ public final class GhostManager {
             // (b) wait for everyone else to have packed their data
             val t2 = Timer.nanoTime();
             ls.processTime += (t2 - t1);
-            team.barrier();
+            //NO_COLL team.barrier();
             val t3 = Timer.nanoTime();
             ls.waitTime += (t3 - t2);
     
@@ -455,7 +455,7 @@ public final class GhostManager {
             // (b) wait for everyone else to have packed their data
             val t2 = Timer.nanoTime();
             ls.processTime += (t2 - t1);
-            team.barrier();
+            //NO_COLL team.barrier();
             val t3 = Timer.nanoTime();
             ls.waitTime += (t3 - t2);
     
@@ -560,7 +560,7 @@ public final class GhostManager {
             // (b) wait for everyone else to have packed their data
             val t2 = Timer.nanoTime();
             ls.processTime += (t2 - t1);
-            team.barrier();
+            //NO_COLL team.barrier();
             val t3 = Timer.nanoTime();
             ls.waitTime += (t3 - t2);
     

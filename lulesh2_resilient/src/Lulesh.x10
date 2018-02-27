@@ -188,7 +188,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         finish for (place in places) at(place) async {
             val domain = domainPlh();
             val elapsedTimeMillis = Timer.milliTime() - domain.startTimeMillis;
-            domain.elapsedTimeMillis = team.allreduce(elapsedTimeMillis, Team.MAX);
+            //NO_COLL domain.elapsedTimeMillis = team.allreduce(elapsedTimeMillis, Team.MAX);
         }
 
         val elapsedTime = (domainPlh().elapsedTimeMillis) / 1e3;
@@ -265,7 +265,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
                 massGhostMgr.waitAndCombineBoundaries();
             }
 
-	        team.barrier();
+            //NO_COLL team.barrier();
 	        
 	        if (domain.startTimeMillis == 0) //to avoid resetting the start time after rollback
                 domain.startTimeMillis = Timer.milliTime();
@@ -337,8 +337,8 @@ public final class Lulesh implements SPMDResilientIterativeApp {
                 rep = 10n * (1n + domain.cost);
             repTimesNumElem += rep * domain.regElemList(r).size;
         }
-        val maxLoad = team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
-        val totalLoad = team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
+        val maxLoad = 100n; //NO_COLL team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.MAX);
+        val totalLoad = 100n; //NO_COLL team.reduce(Place.FIRST_PLACE, repTimesNumElem, Team.ADD);
         if (here.equals(Place.FIRST_PLACE)) {
             val meanLoad = totalLoad/places.size();
             Console.OUT.printf("region load max %d average %d imbalance %f\n", maxLoad, meanLoad, (maxLoad*1.0/meanLoad)-1.0);
@@ -365,7 +365,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             }
 
             val start = Timer.milliTime();
-            newDt = team.allreduce(gNewDt, Team.MIN);
+            newDt = oldDt; //NO_COLL team.allreduce(gNewDt, Team.MIN);
             domain.allreduceTime += Timer.milliTime() - start;
 
             ratio = newDt / oldDt;
@@ -383,7 +383,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             domain.deltatime = newDt;
         } else {
             // TODO: without this barrier, fixed timestep can deadlock - why?
-            team.barrier();
+            //NO_COLL team.barrier();
         }
 
         /* TRY TO PREVENT VERY SMALL SCALING ON THE NEXT CYCLE */
