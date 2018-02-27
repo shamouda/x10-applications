@@ -510,7 +510,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
 startLoop(4);
             Foreach.block(0, numElem-1, (k:Long)=> {
                 if (determ(k) <= 0.0) {
-                    throw new VolumeException(k, determ(k));
+                    //NO_COLL throw new VolumeException(k, determ(k));
                 }
             });
 endLoop(4);
@@ -788,7 +788,7 @@ startLoop(5);
 
                 /* Do a check for negative volumes */
                 if (domain.v(i) <= 0.0) {
-                    throw new VolumeException(i, domain.v(i));
+                    //NO_COLL throw new VolumeException(i, domain.v(i));
                 }
             }
         } );
@@ -1156,7 +1156,7 @@ startLoop(15);
 
                 // See if any volumes are negative, and take appropriate action.
                 if (vnew(k) <= 0.0)  {
-                    throw new VolumeException(k, vnew(k));
+                  //NO_COLL throw new VolumeException(k, vnew(k));
                 }
             } );
 endLoop(15);
@@ -1672,7 +1672,7 @@ startLoop(18);
                     if (vc > eosvmax) vc = eosvmax;
                 }
                 if (vc <= 0.0) {
-                    throw new VolumeException(i, vc);
+                  //NO_COLL throw new VolumeException(i, vc);
                 }
             });
 endLoop(18); // fused loops 18-20
