@@ -102,7 +102,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         }
         
         val startTime = Timer.milliTime();
-        val executor = new SPMDResilientIterativeExecutor(opts.checkpointFreq, opts.spare, false, true);
+        val executor = new SPMDResilientIterativeExecutor(opts.checkpointFreq, opts.spare, false);
         val places = executor.activePlaces();
         val team = executor.team();        
         val numPlaces = places.size();
