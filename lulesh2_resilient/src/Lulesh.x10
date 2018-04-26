@@ -102,7 +102,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         }
 
         val disableWarmup = System.getenv("DISABLE_TEAM_WARMUP");
-        if (disableWarmup == null && disableWarmup.equals("0")) {
+        if (disableWarmup == null || disableWarmup.equals("0")) {
             teamWarmup();
         }
         else {
