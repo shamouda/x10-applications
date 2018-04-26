@@ -144,6 +144,8 @@ public final class Lulesh implements SPMDResilientIterativeApp {
     }
     
     public def initGhostManagers(){
+        var initGTime:Long = 0;
+        initGTime -= Timer.milliTime();
         // initialize ghost update managers
         if (this.massGhostMgr != null)
             this.massGhostMgr.destroyLocalState();
@@ -178,6 +180,8 @@ public final class Lulesh implements SPMDResilientIterativeApp {
                 opts.nx, 
                 (dom:Domain) => [dom.delv_xi, dom.delv_eta, dom.delv_zeta],
                 places, team);
+        initGTime += Timer.milliTime();
+        Console.OUT.println("initGhostManagers time:"+initGTime);
     }
     
     public def run(opts:CommandLineOptions, appStartTime:Long) {
@@ -304,13 +308,9 @@ public final class Lulesh implements SPMDResilientIterativeApp {
             PlaceLocalHandle.addPlace[Domain](domainPlh, sparePlace, ()=>new Domain(opts.nx, opts.numReg, opts.balance, opts.cost, placesPerSide, places.indexOf(here)));
         }
         remakeDomainTime += Timer.milliTime();
-        
+        Console.OUT.println("repairDomain time:"+remakeDomainTime);
         this.team = newTeam;
-        var initTime:Long = 0;
-        initTime -= Timer.milliTime();
         initGhostManagers();
-        initTime += Timer.milliTime();
-        Console.OUT.println("Application remake succeeded:remakeDomainTime:"+remakeDomainTime+":initGhostTime:"+initTime);
     }
     
     public def restore_local(restoreDataMap:HashMap[String,Cloneable], lastCheckpointIter:Long) {
