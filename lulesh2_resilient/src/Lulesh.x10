@@ -151,7 +151,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         new Lulesh(opts, executor, domainPlh).run(opts, startTime);
     }
 
-    public def this(opts:CommandLineOptions, executor:SPMDResilientIterativeExecutor, domainPlh:PlaceLocalHandle[Domain]) {
+    public def this(opts:CommandLineOptions, executor:IterativeExecutor, domainPlh:PlaceLocalHandle[Domain]) {
     	this.opts = opts;
     	this.executor = executor;
     	this.places = executor.activePlaces();
