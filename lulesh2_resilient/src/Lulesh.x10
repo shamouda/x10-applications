@@ -84,7 +84,7 @@ public final class Lulesh implements SPMDResilientIterativeApp {
 
     private static val EXIT_CODE_INCORRECT_USAGE = 2n;
 
-    private val executor:SPMDResilientIterativeExecutor;
+    private val executor:IterativeExecutor;
     public var places:PlaceGroup;
     public var team:Team;
     public val opts:CommandLineOptions;
@@ -108,10 +108,17 @@ public final class Lulesh implements SPMDResilientIterativeApp {
         else {
             Console.OUT.println("Starting without warmpup!!");
         }
+        val disableAgree = System.getenv("DISABLE_TEAM_AGREE") != null && Long.parseLong(System.getenv("DISABLE_TEAM_AGREE")) == 1;
         
         
         val startTime = Timer.milliTime();
-        val executor = new SPMDResilientIterativeExecutor(opts.checkpointFreq, opts.spare, false);
+        val executor:IterativeExecutor;
+        
+        if (x10.xrx.Runtime.x10rtAgreementSupport() && !disableAgree)
+            executor = new SPMDAgreeResilientIterativeExecutor(opts.checkpointFreq, opts.spare, false);
+        else
+            executor = new SPMDResilientIterativeExecutor(opts.checkpointFreq, opts.spare, false);
+        
         val places = executor.activePlaces();
         val team = executor.team();        
         val numPlaces = places.size();
